@@ -211,6 +211,11 @@
     .app-sec .chk-grid { border: none; border-radius: 0; max-height: none; }
     .apps-wrap { max-height: 260px; overflow-y: auto; padding-right: 2px; }
     .oculta { display: none !important; }
+    /* Aviso de transportista: tambien se crea en Data Maestra */
+    .dm-aviso { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 3px 10px; border-radius: 12px; background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; font-size: 12px; font-weight: 600; }
+    .dm-aviso.ok { background: #ecfdf3; border-color: #86efac; color: #166534; }
+    .dm-check { display: flex; gap: 10px; align-items: flex-start; margin-top: 10px; padding: 10px 12px; border: 1.5px solid #fdba74; background: #fff7ed; border-radius: 6px; font-size: 13px; color: #7c2d12; cursor: pointer; }
+    .dm-check input { width: 18px; height: 18px; margin-top: 1px; accent-color: #c2410c; flex-shrink: 0; cursor: pointer; }
     /* Lista de solicitudes: pestañas por estado + filas tipo tarjeta */
     .sl-area { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 12px 12px 20px; }
     .sl-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -465,6 +470,20 @@
                 </div>
                 <div class="ap-body" id="tbl-admins"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
             </div>
+            <div class="ap-panel" style="flex:0 1 auto;max-width:760px;margin-top:12px">
+                <div class="ap-ph">
+                    <span class="ap-ph-t">Aviso de transportistas (Data Maestra)</span>
+                    <span class="ap-ph-sub">Reciben un correo cuando se marca ejecutada una solicitud con rol TRANSPORTISTA.</span>
+                </div>
+                <div class="ap-body" style="padding:12px 14px">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+                        <div class="fg" style="flex:1;min-width:240px"><label>Agregar correo</label><input type="text" id="dm-correo" placeholder="persona@naturisa.com.ec" onkeydown="if(event.key==='Enter')agregarCorreoDM()" style="width:100%;height:30px;padding:0 10px;border:1px solid #b9c3cd;border-radius:4px"></div>
+                        <button class="rep-btn rep-btn-p" onclick="agregarCorreoDM()">Agregar</button>
+                    </div>
+                    <div id="dm-lista" style="margin-top:10px"></div>
+                    <div id="dm-canal" class="sub" style="margin-top:8px"></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -508,7 +527,7 @@
 <div class="md-bg" id="modal-bm" onclick="if(event.target===this)cerrarModal('modal-bm')">
     <div class="md">
         <div class="md-h">
-            <div><div class="md-h-t">Favorito "Pegar en AP1"</div><div class="md-h-s">Llena los campos del formulario de AP1 de una sola vez</div></div>
+            <div><div class="md-h-t">Favorito "Pegar en AP1"</div><div class="md-h-s">Llena el formulario de crear usuario de AP1 → Seguridad de una sola vez</div></div>
             <button class="md-x" onclick="cerrarModal('modal-bm')">Cerrar</button>
         </div>
         <div class="md-b" style="font-size:13px;line-height:1.7;color:#1f2f44">
@@ -526,7 +545,7 @@
             <ol style="padding-left:20px;margin:4px 0 0">
                 <li>En la solicitud, pulsa el ícono de copiar junto al nombre.</li>
                 <li>En AP1 → Seguridad → crear usuario, pulsa el favorito <b>Pegar en AP1</b> (no <span class="k-pegar">Ctrl+V</span>).</li>
-                <li>Elige Departamento y Cargo en sus listas y guarda.</li>
+                <li>Llena solo: datos, Departamento, Cargo, roles de cada aplicación y sucursales. Revisa y pulsa <b>Guardar</b>.</li>
             </ol>
         </div>
     </div>
@@ -667,7 +686,7 @@ function nombreSucursal(id) {
 function showTab(t) {
   document.querySelectorAll('.sb-nav-item').forEach(el => el.classList.toggle('active', el.dataset.tab === t));
   document.querySelectorAll('.screen').forEach(el => el.classList.toggle('active', el.id === 'screen-' + t));
-  if (t === 'admins') cargarAdmins();
+  if (t === 'admins') { cargarAdmins(); cargarConfigDM(); }
   if (t === 'consulta') setTimeout(() => document.getElementById('cq-cedula').focus(), 0);
 }
 
@@ -884,6 +903,20 @@ function renderConsulta() {
     : '<span class="rep-st INACTIVO">No registrado en RRHH</span>';
   const chipUsuario = !j.usuarios.length ? '<span class="rep-st PENDIENTE">No tiene usuario AP1</span>'
     : j.usuarios.map(u => `<span class="rep-st ${u.estado === 'ACTIVO' ? 'APROBADA' : 'INACTIVO'}">Usuario ${esc(u.username)} · ${esc(u.estado)}</span>`).join(' ');
+  // Transportista: si tiene el rol en AP1 Balanceado debe estar tambien en Data Maestra (Logística → Transportistas)
+  const tieneRolT = j.usuarios.some(u => u.estado === 'ACTIVO' && (u.rolesBalanceado || []).some(r => /^TRANSPORTISTA$/i.test(r)));
+  const dmT = j.dataMaestra && j.dataMaestra.transportista;
+  const dmActivo = dmT && dmT.estado === 'ACTIVO';
+  let chipDM = '';
+  if (j.dataMaestra && !j.dataMaestra.disponible) {
+    if (tieneRolT) chipDM = '<span class="rep-st">Data Maestra no disponible</span>';
+  } else if (tieneRolT && dmActivo) {
+    chipDM = `<span class="dm-aviso ok" style="margin-top:0">${ICONO_CAMION} En Data Maestra como transportista</span>`;
+  } else if (tieneRolT) {
+    chipDM = `<span class="dm-aviso" style="margin-top:0">${ICONO_CAMION} Falta en Data Maestra como transportista${dmT ? ' (está ' + esc(dmT.estado) + ')' : ''}</span>`;
+  } else if (dmT) {
+    chipDM = `<span class="rep-st INACTIVO">${ICONO_CAMION} Transportista en Data Maestra (${esc(dmT.estado)}) · sin rol en AP1</span>`;
+  }
 
   // Acciones: sin usuario -> Solicitar usuario; con usuario -> Editar (sucursales y roles) y Dar de baja
   let acciones = '';
@@ -940,7 +973,7 @@ function renderConsulta() {
         <div class="cq-persona">
           <div class="cq-nombre">${esc(nombre)}</div>
           <div class="cq-ced">CI ${esc(j.cedula)}</div>
-          <div class="cq-chips">${chipEmpresa}${chipUsuario}</div>
+          <div class="cq-chips">${chipEmpresa}${chipUsuario}${chipDM}</div>
         </div>
         ${info}
         <div class="cq-acc">${acciones}</div>
@@ -1048,6 +1081,22 @@ function aprobadorSol(s) {
 
 const fechaCorta = iso => iso ? new Date(iso).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
 
+// La solicitud da el rol TRANSPORTISTA (alta o edicion que lo agrega): tambien hay que crearlo en Data Maestra
+function requiereDataMaestra(s) {
+  const d = datosSol(s);
+  const esT = n => /(^|·\s*)TRANSPORTISTA$/i.test(String(n || '').trim());
+  if (s.tipo === 'ALTA') return (d.rolesNombres || []).some(esT) || /^TRANSPORTISTA$/i.test(d.rol || '');
+  if (s.tipo === 'CAMBIO') return (d.rolesAgregarNombres || []).some(esT) || (d.rolesAgregar || []).some(esT) || /^TRANSPORTISTA$/i.test(d.rol || '');
+  return false;
+}
+const ICONO_CAMION = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>';
+function avisoDataMaestra(s) {
+  if (!requiereDataMaestra(s)) return '';
+  if (s.datamaestra_por) return `<div class="dm-aviso ok" title="${esc(s.correo_dm_estado || '')}">${ICONO_CAMION} Creado en Data Maestra · ${esc(nombreCorto(s.datamaestra_nombre) || s.datamaestra_por)}</div>`;
+  if (['RECHAZADA', 'ANULADA'].includes(s.estado)) return '';
+  return `<div class="dm-aviso">${ICONO_CAMION} Crear también en Data Maestra como transportista</div>`;
+}
+
 function datosSol(s) { try { return JSON.parse(s.datos || '{}'); } catch { return {}; } }
 
 // Persona afectada: nombre y debajo un dato por linea. Un solo icono junto al nombre copia todo
@@ -1061,7 +1110,9 @@ function personaSol(s, d) {
        ['Correo electrónico', d.email], ['Departamento', d.departamentoNombre], ['Cargo', d.cargoNombre]]
     : [['Identificación', s.user_identificacion], ['Cargo', d.cargoActual]];
   const conValor = campos.filter(([, v]) => v);
-  const texto = conValor.map(([k, v]) => `${k}: ${v}`).join('\n');
+  // Para el favorito "Pegar en AP1": roles "Aplicación · Rol" y sucursales, separados por " | " (no se muestran aqui)
+  const extra = alta ? [['Roles', (d.rolesNombres || (d.rol ? ['AP1 Balanceado · ' + d.rol] : [])).join(' | ')], ['Sucursales', (d.sucursalesNombres || []).join(' | ')]] : [];
+  const texto = conValor.concat(extra.filter(([, v]) => v)).map(([k, v]) => `${k}: ${v}`).join('\n');
   const etiqueta = k => k === 'Correo electrónico' ? 'Correo' : k;
   return `<div class="per-top"><span class="sol-nom">${esc(nombre || '—')}</span>` +
     `<button class="cp" title="Copiar los datos para pegarlos en AP1" data-v="${esc(texto)}" onclick="copiar(this)">${ICONO_COPIAR}</button></div>` +
@@ -1073,34 +1124,132 @@ function personaSol(s, d) {
 const ICONO_COPIAR = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
 const ICONO_OK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="20 6 9 17 4 12"/></svg>';
 
-// Favorito "Pegar en AP1": se ejecuta DENTRO de la pagina de AP1 (por eso no usa nada de esta pantalla).
-// Lee el portapapeles ("Etiqueta: valor" por linea), busca cada etiqueta del formulario de crear usuario
-// y escribe el valor en su campo, avisando a Angular con los eventos input/change/blur.
+// Favorito "Pegar en AP1": se ejecuta DENTRO de AP1 → Seguridad → Usuarios → Nuevo (React + PrimeReact),
+// por eso no usa nada de esta pantalla. Lee el portapapeles ("Etiqueta: valor" por linea) y:
+//   1) escribe los campos de texto, enciende "Usar identificación como contraseña" y apaga "Forzar cambio de contraseña", 2) elige Departamento y Cargo, 3) por cada aplicacion la elige en
+//   "Filtrar por aplicación" y pasa sus roles a Asignados, 4) pasa las sucursales a Asignados.
+// No pulsa Guardar: el administrador revisa y guarda.
 async function pegarEnAp1() {
   const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const esperar = ms => new Promise(r => setTimeout(r, ms));
+  const hasta = async (fn, ms) => { const t0 = Date.now(); while (Date.now() - t0 < (ms || 6000)) { const v = fn(); if (v) return v; await esperar(150); } return null; };
   let texto = '';
   try { texto = await navigator.clipboard.readText(); } catch (e) {}
   if (!/identificaci/i.test(texto)) texto = prompt('Pega aquí (' + (/Mac/i.test(navigator.platform) ? '⌘V' : 'Ctrl+V') + ') los datos copiados en Control de Usuarios:') || '';
   if (!texto) return;
   const d = {};
   texto.split(/\r?\n/).forEach(l => { const i = l.indexOf(':'); if (i > 0) d[norm(l.slice(0, i))] = l.slice(i + 1).trim(); });
-  const campos = ['identificacion', 'nombres', 'apellidos', 'telefono', 'correo electronico'];
+  const ok = [], faltan = [];
+
+  // 1) Campos de texto (React: setter nativo + evento input)
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-  let llenos = 0; const faltan = [];
-  for (const k of campos) {
+  const ids = { 'identificacion': 'identificationNumber', 'nombres': 'names', 'apellidos': 'lastNames', 'telefono': 'phoneNumber', 'correo electronico': 'email' };
+  for (const k of Object.keys(ids)) {
     if (!d[k]) continue;
-    const etiquetas = [...document.querySelectorAll('label, span, div, p')].filter(e => norm(e.textContent) === k);
-    const et = etiquetas[etiquetas.length - 1];
-    let inp = et && et.htmlFor ? document.getElementById(et.htmlFor) : null;
-    for (let c = et, j = 0; c && !inp && j < 4; j++) { c = c.parentElement; inp = c && c.querySelector('input:not([type=hidden]):not([type=checkbox]):not([type=radio])'); }
-    if (!inp) { faltan.push(k); continue; }
-    inp.focus();
-    setter.call(inp, d[k]);
+    let inp = document.getElementById(ids[k]);
+    if (!inp) {
+      const et = [...document.querySelectorAll('label')].filter(e => norm(e.textContent) === k).pop();
+      inp = et && et.htmlFor ? document.getElementById(et.htmlFor) : null;
+    }
+    if (!inp || inp.tagName !== 'INPUT') { faltan.push(k); continue; }
+    inp.focus(); setter.call(inp, d[k]);
     ['input', 'change', 'blur'].forEach(ev => inp.dispatchEvent(new Event(ev, { bubbles: true })));
-    llenos++;
+    ok.push(k);
   }
-  alert(llenos + ' campos llenados.' + (faltan.length ? '\nNo se encontró en esta página: ' + faltan.join(', ') + '.' : '') +
-    '\n\nDepartamento y Cargo elígelos en la lista' + (d.departamento || d.cargo ? ': ' + [d.departamento, d.cargo].filter(Boolean).join(' / ') : '.'));
+
+  // Interruptores: dejar cada uno en el estado deseado. AP1 puede cambiar uno al tocar el otro
+  // (p. ej. encender "Forzar cambio" al activar "Usar identificación"), asi que se reintenta y se
+  // verifica otra vez al final de todo.
+  // Orden importante: AP1 bloquea "Forzar cambio" cuando "Usar identificación" esta activo,
+  // por eso primero se apaga "Forzar cambio" y despues se activa "Usar identificación".
+  const INTERRUPTORES = [['forceChangePassword', false, 'forzar cambio de contraseña'], ['setEasyPassword', true, 'usar identificación como contraseña']];
+  const bloqueado = sw => /p-disabled/.test(sw.className) || sw.getAttribute('aria-disabled') === 'true';
+  async function ajustarInterruptores() {
+    for (const [id, encendido] of INTERRUPTORES) {
+      const sw = document.getElementById(id);
+      if (!sw) continue;
+      for (let intento = 0; intento < 3; intento++) {
+        if ((sw.getAttribute('aria-checked') === 'true') === encendido || bloqueado(sw)) break;
+        (sw.querySelector('.p-inputswitch-slider') || sw).click();
+        await esperar(600);   // dar tiempo a que AP1 reaccione antes de comprobar
+      }
+    }
+  }
+  await ajustarInterruptores();
+
+  // 2) Desplegables PrimeReact: abrir, elegir la opcion por texto
+  const cerrarPaneles = () => { document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); document.body.click(); };
+  async function elegir(id, valor) {
+    const dd = document.getElementById(id);
+    if (!dd || !valor) return false;
+    (dd.querySelector('.p-dropdown-trigger') || dd).click();
+    const panel = await hasta(() => document.querySelector('.p-dropdown-panel'), 4000);
+    if (!panel) return false;
+    const items = await hasta(() => { const l = [...panel.querySelectorAll('.p-dropdown-item, li[role=option]')]; return l.length ? l : null; }, 4000) || [];
+    const it = items.find(x => norm(x.textContent) === norm(valor)) || items.find(x => norm(x.textContent).includes(norm(valor)));
+    if (!it) { cerrarPaneles(); return false; }
+    it.click();
+    await hasta(() => !document.querySelector('.p-dropdown-panel'), 2000);
+    await esperar(250);
+    return true;
+  }
+  if (d.departamento) (await elegir('departments', d.departamento) ? ok : faltan).push('departamento: ' + d.departamento);
+  if (d.cargo) (await elegir('departmentsPosition', d.cargo) ? ok : faltan).push('cargo: ' + d.cargo);
+
+  // 3) y 4) Listas dobles (Disponibles -> Asignados)
+  const listas = [...document.querySelectorAll('.p-picklist')];
+  const lista = palabra => listas.find(pl => (pl.querySelector('.p-picklist-filter-input') || {}).placeholder && norm(pl.querySelector('.p-picklist-filter-input').placeholder).includes(palabra));
+  const plRoles = lista('roles'), plSuc = lista('sucursal');
+  // Busca el item por su texto (los items muestran un titulo chico + el nombre en negrita)
+  const buscar = (ul, nombre, contexto) => {
+    const items = [...ul.querySelectorAll('li')];
+    const exacto = items.filter(li => [...li.querySelectorAll('*')].some(e => !e.children.length && norm(e.textContent) === norm(nombre)) || norm(li.textContent) === norm(nombre));
+    const conCtx = contexto ? exacto.filter(li => norm(li.textContent).includes(norm(contexto))) : exacto;
+    return conCtx[0] || exacto[0] || items.find(li => norm(li.textContent).includes(norm(nombre))) || null;
+  };
+  async function pasar(pl, nombre, contexto) {
+    if (!pl) return false;
+    if (buscar(pl.querySelector('.p-picklist-target'), nombre, contexto)) return true;   // ya asignado
+    const li = buscar(pl.querySelector('.p-picklist-source'), nombre, contexto);
+    if (!li) return false;
+    li.click();
+    await esperar(150);
+    const btn = pl.querySelector('.p-picklist-transfer-buttons button, .p-picklist-buttons button');   // el primero = mover a Asignados
+    if (!btn) return false;
+    btn.click();
+    await hasta(() => buscar(pl.querySelector('.p-picklist-target'), nombre, contexto), 2000);
+    return !!buscar(pl.querySelector('.p-picklist-target'), nombre, contexto);
+  }
+
+  // Roles agrupados por aplicacion: "AP1 Balanceado · ALIMENTADOR | Portal · Key User"
+  const porApp = {};
+  (d.roles || '').split('|').map(x => x.trim()).filter(Boolean).forEach(x => {
+    const k = x.indexOf(' · '); const app = k > 0 ? x.slice(0, k).trim() : 'AP1 Balanceado'; const rol = k > 0 ? x.slice(k + 3).trim() : x;
+    (porApp[app] = porApp[app] || []).push(rol);
+  });
+  for (const app of Object.keys(porApp)) {
+    if (!(await elegir('selectApp', app))) { porApp[app].forEach(r => faltan.push('rol: ' + app + ' · ' + r + ' (no se encontró la aplicación)')); continue; }
+    await hasta(() => plRoles && plRoles.querySelector('.p-picklist-source li'), 6000);
+    for (const rol of porApp[app]) ((await pasar(plRoles, rol, app)) ? ok : faltan).push('rol: ' + app + ' · ' + rol);
+  }
+  // Las sucursales disponibles dependen de las aplicaciones asignadas: esperar a que carguen
+  const sucs = (d.sucursales || '').split('|').map(x => x.trim()).filter(Boolean);
+  if (sucs.length) await hasta(() => plSuc && plSuc.querySelector('.p-picklist-source li, .p-picklist-target li'), 8000);
+  for (const suc of sucs) ((await pasar(plSuc, suc)) ? ok : faltan).push('sucursal: ' + suc);
+
+  // Verificacion final de los interruptores (AP1 pudo cambiarlos mientras se cargaba lo demas)
+  await esperar(400);
+  await ajustarInterruptores();
+  for (const [id, encendido, nombre] of INTERRUPTORES) {
+    const sw = document.getElementById(id);
+    const txt = nombre + (encendido ? ': activado' : ': desactivado');
+    if (!sw) faltan.push(nombre + ' (no se encontró)');
+    else if ((sw.getAttribute('aria-checked') === 'true') === encendido) ok.push(txt);
+    else faltan.push(txt + (bloqueado(sw) ? ' — AP1 lo bloquea cuando se usa la identificación como contraseña' : ' — AP1 no lo dejó cambiar'));
+  }
+
+  alert('Listo: ' + ok.length + ' datos cargados.' + (faltan.length ? '\n\nNo se pudo completar (revísalo a mano):\n- ' + faltan.join('\n- ') : '') +
+    '\n\nRevisa el formulario y pulsa Guardar.');
 }
 
 function codigoFavorito() { return 'javascript:(' + encodeURIComponent(pegarEnAp1.toString()) + ')();void 0'; }
@@ -1174,6 +1323,7 @@ function pedidoSol(s, d, conMotivo) {
     h += `<div class="sol-lin"><span class="ch menos" style="text-decoration:none">Dar de baja el usuario</span></div>`;
     h += lineasAppRol([{ nombres: d.rolesActuales }]);
   }
+  h += avisoDataMaestra(s);
   if (conMotivo && s.motivo) h += `<div class="sol-mot">“${esc(s.motivo)}”</div>`;
   return h;
 }
@@ -1276,7 +1426,10 @@ function abrirEstado(id, estado) {
   document.getElementById('mres-sub').textContent = `${({ ALTA: 'Usuario nuevo', CAMBIO: 'Edición', BAJA: 'Baja' })[s.tipo] || s.tipo} · ${s.subsidiary_nombre} · pedida por ${s.solicitante_nombre || s.solicitante}`;
   const recordatorio = estado === 'EJECUTADA'
     ? '<div class="md-warn"><b>Confirma que ya hiciste el cambio en AP1 → Seguridad → Usuarios.</b></div>' : '';
-  document.getElementById('mres-info').innerHTML = `${detalleSolicitud(s)}${s.motivo ? `<div class="sol-mot">“${esc(s.motivo)}”</div>` : ''}${recordatorio}`;
+  resCtx.dm = estado === 'EJECUTADA' && requiereDataMaestra(s);
+  const casillaDM = resCtx.dm
+    ? `<label class="dm-check"><input type="checkbox" id="mres-dm"><span><b>Ya lo creé en Data Maestra como transportista.</b><br>Obligatorio: esta solicitud incluye el rol TRANSPORTISTA.</span></label>` : '';
+  document.getElementById('mres-info').innerHTML = `${detalleSolicitud(s)}${s.motivo ? `<div class="sol-mot">“${esc(s.motivo)}”</div>` : ''}${recordatorio}${casillaDM}`;
   document.getElementById('mres-label').textContent = estado === 'RECHAZADA' ? 'Motivo del rechazo *' : 'Comentario (opcional)';
   document.getElementById('mres-comentario').value = '';
   document.getElementById('mres-error').textContent = '';
@@ -1286,13 +1439,15 @@ function abrirEstado(id, estado) {
 
 async function confirmarEstado() {
   const btn = document.getElementById('mres-ok');
+  const dmOk = !!document.getElementById('mres-dm')?.checked;
+  if (resCtx.dm && !dmOk) { document.getElementById('mres-error').textContent = 'Marca que ya lo creaste en Data Maestra como transportista.'; return; }
   btn.disabled = true;
   try {
-    await api(`/d1/usuarios/solicitudes/${resCtx.id}/estado`, {
-      method: 'POST', body: JSON.stringify({ estado: resCtx.estado, comentario: document.getElementById('mres-comentario').value })
+    const r = await api(`/d1/usuarios/solicitudes/${resCtx.id}/estado`, {
+      method: 'POST', body: JSON.stringify({ estado: resCtx.estado, comentario: document.getElementById('mres-comentario').value, datamaestraOk: dmOk })
     });
     cerrarModal('modal-res');
-    toast(`Solicitud #${resCtx.id}: ${resCtx.estado}`);
+    toast(`Solicitud #${resCtx.id}: ${resCtx.estado}` + (r.correoDataMaestra ? ` · Aviso Data Maestra: ${r.correoDataMaestra}` : ''));
     cargarSolicitudes();
   } catch (e) {
     document.getElementById('mres-error').textContent = e.message;
@@ -1300,6 +1455,38 @@ async function confirmarEstado() {
 }
 
 // ── Administradores ─────────────────────────────────────
+// ── Correos del aviso de Data Maestra ───────────────────
+let CORREOS_DM = [];
+async function cargarConfigDM() {
+  try {
+    const j = await api('/d1/usuarios/config');
+    CORREOS_DM = j.correosDataMaestra || [];
+    document.getElementById('dm-canal').innerHTML = j.canalCorreo
+      ? 'Envío de correo activo.'
+      : '<b style="color:#9a3412">Envío de correo aún no configurado</b> (falta el buzón de Office 365). Mientras tanto el aviso queda en la app y la solicitud registra "correo pendiente".';
+    pintarCorreosDM();
+  } catch (e) { document.getElementById('dm-lista').innerHTML = `<span class="sub">${esc(e.message)}</span>`; }
+}
+function pintarCorreosDM() {
+  document.getElementById('dm-lista').innerHTML = CORREOS_DM.length
+    ? CORREOS_DM.map(c => `<span class="rep-chip" style="font-size:12.5px;padding:3px 6px 3px 10px">${esc(c)} <button class="cp" title="Quitar" onclick="quitarCorreoDM('${esc(c)}')">✕</button></span>`).join(' ')
+    : '<span class="sub">Sin correos todavía.</span>';
+}
+async function guardarCorreosDM(lista) {
+  try {
+    const j = await api('/d1/usuarios/config', { method: 'POST', body: JSON.stringify({ correosDataMaestra: lista }) });
+    CORREOS_DM = j.correosDataMaestra; pintarCorreosDM(); toast('Correos guardados');
+  } catch (e) { toast(e.message, true); }
+}
+function agregarCorreoDM() {
+  const inp = document.getElementById('dm-correo');
+  const c = inp.value.trim().toLowerCase();
+  if (!c) return;
+  inp.value = '';
+  guardarCorreosDM([...CORREOS_DM, c]);
+}
+function quitarCorreoDM(c) { guardarCorreosDM(CORREOS_DM.filter(x => x !== c)); }
+
 async function cargarAdmins() {
   const cont = document.getElementById('tbl-admins');
   cont.innerHTML = LOADING;
