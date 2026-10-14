@@ -1175,15 +1175,14 @@ const ESTADOS_SOL = {
   EJECUTADA: { txt: 'Ejecutada', color: '#10b981' }, RECHAZADA: { txt: 'Rechazada', color: '#ef4444' }
 };
 const PESTANAS_SOL = [
-  { k: 'ABIERTAS', txt: 'Abiertas', estados: ['PENDIENTE', 'APROBADA'], color: '#1b3c5e' },
+  { k: 'TODAS', txt: 'Todas', estados: null, color: '#94a3b8' },
   { k: 'PENDIENTE', txt: 'Pendientes', estados: ['PENDIENTE'], color: '#f59e0b' },
   { k: 'APROBADA', txt: 'Aprobadas', estados: ['APROBADA'], color: '#3b82f6' },
   { k: 'EJECUTADA', txt: 'Ejecutadas', estados: ['EJECUTADA'], color: '#10b981' },
-  { k: 'RECHAZADA', txt: 'Rechazadas', estados: ['RECHAZADA'], color: '#ef4444' },
-  { k: 'TODAS', txt: 'Todas', estados: null, color: '#94a3b8' }
+  { k: 'RECHAZADA', txt: 'Rechazadas', estados: ['RECHAZADA'], color: '#ef4444' }
 ];
 const TIPO_SOL = { ALTA: 'Usuario nuevo', CAMBIO: 'Edición', BAJA: 'Baja' };
-let SOL_TAB = 'ABIERTAS';
+let SOL_TAB = 'TODAS';
 
 function elegirTab(k) { SOL_TAB = k; renderSolicitudes(); }
 
@@ -1231,8 +1230,8 @@ function renderSolicitudes() {
     `<button class="sl-tab ${SOL_TAB === t.k ? 'on' : ''}" style="--c:${t.color}" onclick="elegirTab('${t.k}')"><span class="dot"></span>${t.txt}<span class="n">${deTab(t).length}</span></button>`).join('');
 
   const tab = PESTANAS_SOL.find(t => t.k === SOL_TAB) || PESTANAS_SOL[0];
-  // Abiertas / pendientes / aprobadas: la mas antigua primero (orden de atencion); el resto, la mas reciente primero
-  const antiguas = ['ABIERTAS', 'PENDIENTE', 'APROBADA'].includes(tab.k);
+  // Pendientes / aprobadas: la mas antigua primero (orden de atencion); el resto, la mas reciente primero
+  const antiguas = ['PENDIENTE', 'APROBADA'].includes(tab.k);
   const lista = deTab(tab).sort((a, b) => antiguas ? a.id - b.id : b.id - a.id);
 
   const cont = document.getElementById('tbl-solicitudes');
