@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>Naturisa - Control de Usuarios</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* Mismo sistema visual que Consumos Combustible / Insumos (tema AP1 Pro) */
+    :root {
+        --primary: #1a3a5c; --primary-light: #2d6a9f; --accent: #00b4d8;
+        --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+        --card: #ffffff; --text: #1d1d1f; --muted: #6e6e73; --border: #e5e5ea;
+        --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+        --shadow-md: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+        --radius: 10px; --radius-sm: 8px;
+        --ap-navy: #1b3c5e; --ap-navy-2: #234d76; --ap-head: #1d3f62; --ap-line: #d3d9e0; --ap-ph: #f1f3f5; --ap-bg: #e9edf1;
+    }
+    html { height: 100%; }
+    body { font-family: 'Segoe UI', Roboto, -apple-system, sans-serif; background: var(--ap-bg); color: var(--text); height: 100%; overflow: hidden; }
+
+    /* ── Barra superior navy ── */
+    .ap-top { position: fixed; top: 0; left: 0; right: 0; height: 52px; display: none; flex-direction: row; align-items: stretch; background: var(--ap-navy); box-shadow: 0 1px 3px rgba(0,0,0,.25); z-index: 200; }
+    .sb-logo { display: flex; align-items: center; padding: 0 6px 0 14px; flex-shrink: 0; }
+    .ap-brand { display: flex; align-items: center; gap: 6px; color: #fff; font-size: 22px; font-weight: 700; letter-spacing: -.5px; }
+    .sb-nav { display: flex; align-items: stretch; padding-left: 4px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
+    .sb-nav::-webkit-scrollbar { display: none; }
+    .sb-nav-item { display: flex; align-items: center; gap: 6px; padding: 0 9px; background: none; border: none; border-top: 3px solid transparent; border-bottom: 3px solid transparent; color: #fff; font-size: 13.5px; font-weight: 500; opacity: .82; cursor: pointer; white-space: nowrap; font-family: inherit; }
+    .sb-nav-item:hover { background: rgba(255,255,255,.08); opacity: 1; }
+    .sb-nav-item.active { background: rgba(255,255,255,.1); border-bottom-color: var(--accent); opacity: 1; font-weight: 600; }
+    .sb-nav-icon { width: 16px; height: 16px; flex-shrink: 0; }
+    .nav-count { display: inline-flex; align-items: center; justify-content: center; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: #dc2626; color: #fff; font-size: 10.5px; font-weight: 800; }
+    .ap-top-right { display: flex; align-items: stretch; flex-shrink: 0; margin-left: 8px; }
+    .ap-app { display: flex; align-items: center; color: #fff; padding: 0 20px 0 28px; position: relative; }
+    .ap-app::before, .sb-footer::before { content: ''; position: absolute; inset: 0; background: var(--ap-navy-2); clip-path: polygon(16px 0, 100% 0, 100% 100%, 0 100%); }
+    .sb-footer::before { background: #eef1f4; }
+    .ap-app-txt { position: relative; z-index: 1; display: flex; flex-direction: column; line-height: 1.05; }
+    .ap-app-name { font-size: 15px; font-weight: 700; }
+    .sb-date { font-size: 10px; font-weight: 500; color: rgba(255,255,255,.65); margin-top: 2px; }
+    .sb-footer { display: flex; align-items: center; padding: 0 14px 0 28px; margin-left: -16px; position: relative; }
+    .hdr-user-btn { position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; background: none; border: none; color: #334155; font-size: 13px; font-weight: 600; cursor: pointer; max-width: 220px; font-family: inherit; }
+    .hdr-user-btn:hover { color: #0f172a; }
+    .hdr-user-av { width: 32px; height: 32px; border-radius: 50%; background: #9aa5b1; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0; }
+    #hdr-user-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hdr-user-dd { position: fixed; top: 54px; right: 8px; min-width: 250px; background: #fff; border-radius: 10px; box-shadow: var(--shadow-md), 0 8px 24px rgba(0,0,0,0.18); border: 1px solid var(--border); overflow: hidden; display: none; z-index: 9999; }
+    .hdr-user-dd.open { display: block; }
+    .hdr-dd-head { padding: 10px 14px; font-size: 12.5px; font-weight: 700; color: var(--text); background: #fafafa; border-bottom: 1px solid var(--border); }
+    .hdr-dd-head small { display: block; font-weight: 500; color: var(--muted); margin-top: 3px; }
+    .hdr-dd-item { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 14px; background: none; border: none; font-size: 12.5px; font-weight: 500; color: var(--text); cursor: pointer; text-align: left; font-family: inherit; }
+    .hdr-dd-item.danger { color: #dc2626; }
+    .hdr-dd-item.danger:hover { background: #fef2f2; }
+
+    /* ── Contenido ── */
+    .content-wrap { position: fixed; left: 0; top: 52px; right: 0; bottom: 0; display: none; flex-direction: column; overflow: hidden; }
+    .screen { display: none; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+    .screen.active { display: flex; }
+
+    /* Filtros en linea estilo AP1: etiqueta arriba, campo abajo */
+    .ap-filters { flex-shrink: 0; display: flex; align-items: flex-end; gap: 6px 14px; flex-wrap: wrap; padding: 5px 16px 7px; background: #fff; border-bottom: 1px solid var(--ap-line); }
+    .fg { display: flex; flex-direction: column; gap: 2px; }
+    .fg label { font-size: 12px; font-weight: 600; color: #1f2f44; }
+    .ap-filters select, .ap-filters input[type=text] { height: 30px; min-width: 200px; max-width: 280px; padding: 0 32px 0 10px; border: 1px solid #b9c3cd; border-radius: 4px; font-size: 13px; color: #334155; font-family: inherit; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23334155' stroke-width='2.2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center / 14px; -webkit-appearance: none; appearance: none; cursor: pointer; }
+    .ap-filters input[type=text] { background-image: none; padding-right: 10px; cursor: text; min-width: 240px; }
+    .ap-filters select:focus, .ap-filters input:focus { outline: none; border-color: var(--ap-navy); box-shadow: 0 0 0 2px rgba(27,60,94,.15); }
+    .ap-filters .chk { display: flex; align-items: center; gap: 6px; height: 30px; font-size: 13px; color: #334155; cursor: pointer; }
+    .ap-f-right { display: flex; align-items: center; gap: 8px; height: 30px; margin-left: auto; }
+    .ap-sq { width: 32px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--ap-navy); border-radius: 3px; background: #fff; color: var(--ap-navy); cursor: pointer; padding: 0; }
+    .ap-sq:hover { background: #eaf1f8; }
+    .ap-sq svg { width: 15px; height: 15px; }
+
+    /* Botones (mismos que Reparto CC) */
+    .rep-btn { height: 30px; font-size: 12.5px; padding: 0 12px; border: 1px solid #b9c3cd; border-radius: 4px; background: #fff; color: #1b3c5e; cursor: pointer; font-weight: 600; font-family: inherit; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+    .rep-btn:hover { background: #eef2f6; }
+    .rep-btn:disabled { opacity: .5; cursor: default; }
+    .rep-btn-p { background: #1b3c5e; color: #fff; border-color: #1b3c5e; }
+    .rep-btn-p:hover { background: #234d76; }
+    .rep-btn-ok { background: #15803d; color: #fff; border-color: #15803d; }
+    .rep-btn-ok:hover { background: #166534; }
+    .rep-btn-x { color: #b91c1c; border-color: #fca5a5; }
+    .rep-btn-x:hover { background: #fef2f2; }
+    .rep-btn-sm { height: 26px; font-size: 12px; padding: 0 9px; }
+
+    /* Area de paneles */
+    .ap-area { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; padding: 6px; overflow: hidden; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; flex-shrink: 0; }
+    .kpi-card { background: #fff; border: 1px solid #c9d1da; border-left: 3px solid #3B82F6; border-radius: 2px; padding: 9px 12px; box-shadow: 0 1px 2px rgba(15,23,42,.08); min-width: 0; }
+    .kpi-card.green { border-left-color: var(--success); } .kpi-card.orange { border-left-color: var(--warning); }
+    .kpi-card.cyan { border-left-color: var(--accent); } .kpi-card.red { border-left-color: var(--danger); }
+    .kpi-card.purple { border-left-color: #7c3aed; }
+    .kpi-label { font-size: 10px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .kpi-value { font-size: 21px; font-weight: 700; color: var(--text); line-height: 1.1; }
+
+    /* Panel tipo ventana */
+    .ap-panel { flex: 1; min-height: 0; background: #fff; border: 1px solid #c9d1da; border-radius: 2px; box-shadow: 0 1px 2px rgba(15,23,42,.08); display: flex; flex-direction: column; overflow: hidden; }
+    .ap-ph { flex-shrink: 0; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 8px 0 12px; background: var(--ap-ph); border-bottom: 1px solid var(--ap-line); }
+    .ap-ph-t { font-size: 15px; font-weight: 600; color: #1f2f44; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ap-ph-sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+    .ap-ph-r { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .ap-body { flex: 1; min-height: 0; overflow: auto; }
+
+    /* Tablas estilo AP1 */
+    .ap-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .ap-tbl th { position: sticky; top: 0; z-index: 1; background: var(--ap-head); color: #fff; font-size: 12px; font-weight: 700; text-align: center; padding: 7px 8px; border-right: 1px solid rgba(255,255,255,.16); white-space: nowrap; }
+    .ap-tbl th:first-child { text-align: left; }
+    .ap-tbl td { padding: 5px 8px; border-bottom: 1px solid #e8ebef; border-right: 1px solid #edf0f3; vertical-align: middle; color: #1f2f44; }
+    .ap-tbl tbody tr:hover td { background: #eaf3fb; }
+    .ap-tbl .c { text-align: center; }
+    /* Toda la tabla con la misma letra: mismo tamaño, peso y color en celdas, chips, sublineas y botones */
+    .ap-tbl td, .ap-tbl td b, .ap-tbl td .sub, .ap-tbl td .rep-chip, .ap-tbl td .rep-st, .ap-tbl td .rep-btn {
+        font-family: inherit; font-size: 12.5px; font-weight: 400; color: #1f2f44; text-transform: none; letter-spacing: 0;
+    }
+    .ap-tbl td .rep-btn-x { color: #b91c1c; }
+    .ap-tbl td .rep-btn-p, .ap-tbl td .rep-btn-ok { color: #fff; }
+    .ap-tbl .acc { display: flex; gap: 5px; justify-content: center; }
+    .sub { font-size: 11.5px; color: #64748b; }
+    .empty { padding: 40px 20px; text-align: center; color: var(--muted); font-size: 13px; }
+    .loading { padding: 40px; text-align: center; color: var(--muted); font-size: 13px; }
+    .spinner { display: inline-block; width: 18px; height: 18px; border: 2.5px solid #e5e5ea; border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite; margin-right: 8px; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Estados (mismos chips que Reparto CC) */
+    .rep-st { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; background: #f1f5f9; color: #475569; white-space: nowrap; }
+    .rep-st.ACTIVO, .rep-st.EJECUTADA { background: #dcfce7; color: #166534; }
+    .rep-st.INACTIVO, .rep-st.ANULADA { background: #f1f5f9; color: #64748b; }
+    .rep-st.PENDIENTE { background: #fef3c7; color: #92400e; }
+    .rep-st.APROBADA { background: #dbeafe; color: #1e40af; }
+    .rep-st.RECHAZADA, .rep-st.BAJA { background: #fee2e2; color: #991b1b; }
+    .rep-st.ALTA { background: #ede9fe; color: #5b21b6; }
+    .rep-st.CAMBIO { background: #e0f2fe; color: #075985; }
+    .rep-chip { display: inline-block; margin: 1px 4px 1px 0; padding: 1px 7px; border-radius: 10px; background: #eef2f7; font-size: 11.5px; color: #1f2f44; white-space: nowrap; }
+
+    /* ── Login (igual a Combustible) ── */
+    #login-modal { position: fixed; inset: 0; background: #0f172a; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .lg-card { background: #fff; border-radius: 16px; padding: 36px 32px; width: 380px; max-width: 92vw; box-shadow: 0 16px 40px rgba(0,0,0,0.35); }
+    .lg-head { text-align: center; margin-bottom: 26px; }
+    .lg-title { font-size: 21px; font-weight: 800; color: #1a3a5c; letter-spacing: .5px; }
+    .lg-sub { font-size: 12.5px; color: #6e6e73; margin-top: 4px; }
+    .lg-f { margin-bottom: 12px; }
+    .lg-f label { display: block; font-size: 11px; font-weight: 700; color: #6e6e73; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 5px; }
+    .lg-f input { width: 100%; padding: 10px 13px; border: 1.5px solid #e5e5ea; border-radius: 8px; font-size: 14px; outline: none; font-family: inherit; }
+    .lg-f input:focus { border-color: #2d6a9f; }
+    .lg-btn { width: 100%; margin-top: 8px; padding: 12px; background: #1a3a5c; color: #fff; border: none; border-radius: 8px; font-size: 14.5px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .lg-btn:hover { background: #2d6a9f; }
+    .lg-btn:disabled { opacity: .6; cursor: default; }
+    #modal-status { text-align: center; margin-top: 12px; font-size: 13px; color: #ef4444; min-height: 18px; }
+
+    /* ── Modales (cabecera navy como Historial Ha) ── */
+    .md-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 9500; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .md { background: #fff; border-radius: 12px; width: 100%; max-width: 560px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
+    .md-h { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #1e3a5f; flex-shrink: 0; }
+    .md-h-t { color: #fff; font-size: 14px; font-weight: 700; }
+    .md-h-s { color: #93c5fd; font-size: 11px; margin-top: 2px; }
+    .md-x { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: #fff; border-radius: 7px; padding: 5px 12px; font-size: 12px; cursor: pointer; font-weight: 600; font-family: inherit; }
+    .md-b { padding: 16px 18px; overflow-y: auto; }
+    .md-f { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 10px 18px; border-top: 1px solid var(--border); flex-shrink: 0; }
+    .md-err { margin-right: auto; color: #b91c1c; font-size: 12px; }
+    .md .fg { margin-bottom: 11px; }
+    .md .fg input, .md .fg select, .md .fg textarea { width: 100%; height: 32px; padding: 0 10px; border: 1px solid #b9c3cd; border-radius: 4px; font-size: 13px; font-family: inherit; color: #334155; background: #fff; }
+    .md .fg textarea { height: auto; padding: 7px 10px; resize: vertical; }
+    .md .fg input:focus, .md .fg select:focus, .md .fg textarea:focus { outline: none; border-color: var(--ap-navy); box-shadow: 0 0 0 2px rgba(27,60,94,.15); }
+    .md-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+    /* Consulta por cedula */
+    .cq-area { flex: 1; min-height: 0; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 6px; }
+    .cq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .cq-panel { background: #fff; border: 1px solid #c9d1da; border-radius: 2px; box-shadow: 0 1px 2px rgba(15,23,42,.08); display: flex; flex-direction: column; min-width: 0; }
+    .cq-body { padding: 10px 12px; font-size: 12.5px; color: #1f2f44; line-height: 1.6; }
+    .cq-nombre { font-size: 17px; font-weight: 600; color: #1f2f44; }
+    .cq-kv { display: grid; grid-template-columns: 130px 1fr; gap: 2px 10px; }
+    /* Ficha de la persona: fila superior (iniciales, nombre, acciones) + franja con los datos de RRHH */
+    .cq-ficha { padding: 0; }
+    .cq-top { display: flex; align-items: center; gap: 14px; padding: 14px 16px; flex-wrap: wrap; }
+    .cq-av { width: 52px; height: 52px; border-radius: 50%; background: var(--ap-navy); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; flex-shrink: 0; }
+    .cq-av.sin { background: #cbd5e1; }
+    .cq-persona { flex: 0 1 auto; min-width: 240px; }
+    /* Datos de RRHH junto al nombre: 3 columnas x 2 filas (se llena por columna) */
+    .cq-info { flex: 1 1 560px; min-width: 0; display: grid; grid-template-rows: repeat(2, auto); grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px 28px; align-content: center; padding-left: 24px; border-left: 1px solid #e8ebef; }
+    .cq-info .cq-dato { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .cq-info .cq-dato > span:first-child { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .4px; }
+    .cq-info .cq-dato > span:last-child { font-size: 13px; color: #1f2f44; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cq-info .cq-vacio { grid-row: span 2; align-self: center; font-size: 12.5px; color: #64748b; }
+    @media (max-width: 900px) { .cq-info { grid-template-rows: none; grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-left: 0; border-left: none; flex-basis: 100%; } }
+    .cq-nombre { font-size: 18px; font-weight: 600; color: #1f2f44; line-height: 1.25; }
+    .cq-chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+    .cq-ced { font-size: 18px; font-weight: 600; color: #475569; line-height: 1.25; }
+    .cq-top .cq-acc { margin: 0; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+    .cq-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid #e8ebef; background: #f8fafc; }
+    .cq-strip .cq-dato { padding: 9px 16px; border-right: 1px solid #e8ebef; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .cq-strip .cq-dato:last-child { border-right: none; }
+    .cq-strip .cq-dato > span:first-child { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .4px; }
+    .cq-strip .cq-dato > span:last-child { font-size: 13px; color: #1f2f44; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cq-strip-vacio { padding: 10px 16px; border-top: 1px solid #e8ebef; background: #f8fafc; font-size: 12.5px; color: #64748b; }
+    .cq-extra { padding: 0 16px 12px; }
+    @media (max-width: 900px) { .cq-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cq-strip .cq-dato { border-bottom: 1px solid #e8ebef; } }
+    /* Formulario Editar: casillas de sucursales y roles */
+    .md.md-ancho { max-width: 760px; }
+    .chk-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px 12px; max-height: 230px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 4px; padding: 8px 10px; }
+    .chk-grid.roles { grid-template-columns: repeat(3, minmax(0, 1fr)); max-height: none; }
+    .chk-it { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #1f2f44; padding: 2px 4px; border-radius: 3px; cursor: pointer; user-select: none; }
+    .md .fg .chk-it input[type=checkbox] { width: 15px; height: 15px; padding: 0; margin: 0; border: none; box-shadow: none; accent-color: var(--ap-navy); cursor: pointer; flex-shrink: 0; }
+    .chk-it.add { background: #dcfce7; color: #166534; }
+    .chk-it.del { background: #fee2e2; color: #991b1b; text-decoration: line-through; }
+    .app-sec { border: 1px solid #e2e8f0; border-radius: 4px; margin-bottom: 5px; background: #fff; }
+    .app-sec > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 7px 10px; font-size: 12.5px; font-weight: 600; color: #1f2f44; background: #f8fafc; border-radius: 4px; user-select: none; }
+    .app-sec > summary::-webkit-details-marker { display: none; }
+    .app-sec > summary::before { content: '▸'; color: #64748b; font-size: 11px; transition: transform .15s; }
+    .app-sec[open] > summary::before { transform: rotate(90deg); }
+    .app-sec[open] > summary { border-bottom: 1px solid #e2e8f0; border-radius: 4px 4px 0 0; }
+    .app-sec .app-cnt { margin-left: auto; font-size: 11px; font-weight: 700; color: #fff; background: var(--ap-navy); border-radius: 9px; padding: 0 7px; min-width: 18px; text-align: center; }
+    .app-sec .app-cnt:empty { display: none; }
+    .app-sec .chk-grid { border: none; border-radius: 0; max-height: none; }
+    .apps-wrap { max-height: 260px; overflow-y: auto; padding-right: 2px; }
+    .oculta { display: none !important; }
+    /* Lista de solicitudes: pestañas por estado + filas tipo tarjeta */
+    .sl-area { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 16px 20px; }
+    .sl-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .sl-tab { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 17px; border: 1px solid #cfd8e3; background: #fff; color: #334155; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: background .12s, border-color .12s; }
+    .sl-tab:hover { border-color: #9fb0c3; }
+    .sl-tab .n { min-width: 22px; height: 20px; padding: 0 7px; border-radius: 10px; background: #eef2f6; color: #475569; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+    .sl-tab .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, #94a3b8); }
+    .sl-tab.on { background: var(--ap-navy); border-color: var(--ap-navy); color: #fff; }
+    .sl-tab.on .n { background: rgba(255,255,255,.2); color: #fff; }
+    .sl-cols { display: grid; grid-template-columns: 92px 96px minmax(300px, 1.6fr) minmax(240px, 1.3fr) minmax(130px, .7fr) minmax(130px, .7fr) 170px 180px; gap: 0 18px; align-items: center; }
+    .sl-solic .sl-cols { grid-template-columns: 92px 96px minmax(300px, 1.6fr) minmax(240px, 1.3fr) minmax(130px, .7fr) minmax(130px, .7fr) 170px; }
+    .sl-head { padding: 0 18px 8px 22px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .5px; }
+    .sl-row { background: #fff; border-radius: 10px; padding: 14px 18px; margin-bottom: 8px; border-left: 4px solid var(--c, #cbd5e1); box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 0 0 1px #e3e8ee; transition: box-shadow .15s; }
+    .sl-row:hover { box-shadow: 0 6px 18px rgba(15,23,42,.09), 0 0 0 1px #cfd8e3; }
+    .sl-id { font-size: 15px; font-weight: 700; color: #1f2f44; margin-bottom: 4px; }
+    .sl-fecha { font-size: 12.5px; color: #475569; }
+    .sl-per { display: flex; gap: 12px; align-items: flex-start; min-width: 0; }
+    .sl-per > div:last-child { flex: 1; min-width: 0; }
+    .sl-quien { font-size: 13px; color: #1f2f44; font-weight: 500; }
+    .sl-vacio { color: #94a3b8; }
+    .sl-est { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+    .sl-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 700; background: color-mix(in srgb, var(--c) 14%, white); color: color-mix(in srgb, var(--c) 75%, black); }
+    .sl-chip::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+    .sl-nota { font-size: 12px; line-height: 1.4; }
+    .sl-nota.ok { color: #166534; } .sl-nota.no { color: #991b1b; }
+    .sl-acc { display: flex; flex-direction: column; gap: 6px; }
+    .sl-acc .rep-btn { width: 100%; justify-content: center; height: 32px; }
+    .sl-vacia { background: #fff; border: 1.5px dashed #cfd8e3; border-radius: 10px; padding: 40px; text-align: center; color: #8391a2; font-size: 13px; }
+    @media (max-width: 1100px) {
+      .sl-cols, .sl-solic .sl-cols { grid-template-columns: 1fr; gap: 8px; }
+      .sl-head { display: none; }
+      .sl-quien::before { content: attr(data-lbl) ': '; color: #64748b; font-weight: 400; }
+    }
+    /* Solicitudes: filas tipo tarjeta con franja de color por estado */
+    .sol-cols { display: grid; grid-template-columns: 112px 104px minmax(270px, 1.55fr) minmax(240px, 1.4fr) minmax(140px, .8fr) minmax(140px, .8fr) 150px 210px; gap: 0 18px; align-items: center; }
+    /* Solicitantes: sin columna de acciones */
+    .sin-acc .sol-cols { grid-template-columns: 112px 104px minmax(270px, 1.55fr) minmax(240px, 1.4fr) minmax(140px, .8fr) minmax(140px, .8fr) 150px; }
+    .sol-head { position: sticky; top: 0; z-index: 2; background: var(--ap-head); color: #fff; font-size: 12px; font-weight: 700; padding: 8px 14px 8px 18px; }
+    .sol-row { padding: 12px 14px 12px 14px; border-left: 4px solid #cbd5e1; border-bottom: 1px solid #e8ebef; background: #fff; transition: background .12s; }
+    .sol-row:hover { background: #f7fafd; }
+    .sol-row.PENDIENTE { border-left-color: #f59e0b; } .sol-row.APROBADA { border-left-color: #3b82f6; }
+    .sol-row.EJECUTADA { border-left-color: #10b981; } .sol-row.RECHAZADA { border-left-color: #ef4444; }
+    .sol-row.ANULADA { border-left-color: #cbd5e1; }
+    .sol-num { font-size: 14px; font-weight: 700; color: #1f2f44; }
+    .sol-fecha { font-size: 12.5px; color: #1f2f44; line-height: 1.4; }
+    .sol-fecha span { color: #64748b; font-size: 12px; }
+    .sol-nom { font-size: 13.5px; font-weight: 600; color: #1f2f44; }
+    .sol-sub { font-size: 12px; color: #64748b; line-height: 1.5; overflow-wrap: anywhere; }
+    .per-lin { display: flex; gap: 8px; font-size: 12px; line-height: 1.55; min-width: 0; }
+    .per-lin { align-items: center; }
+    .per-k { flex: 0 0 88px; color: #64748b; }
+    .per-top { display: flex; align-items: center; gap: 6px; }
+    .per-top .cp { width: 26px; height: 24px; border-color: #c9d6e4; color: var(--ap-navy); }
+    .cp { flex-shrink: 0; width: 22px; height: 20px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 4px; background: none; color: #64748b; cursor: pointer; padding: 0; }
+    .cp:hover { background: #eaf1f8; border-color: #c9d6e4; color: var(--ap-navy); }
+    .cp.ok { color: #15803d; background: #dcfce7; border-color: #86efac; }
+    .per-v { color: #1f2f44; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sol-lin { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 2px 0; }
+    .sol-k { font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .4px; min-width: 74px; }
+    .ch { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11.5px; background: #eef2f7; color: #1f2f44; white-space: nowrap; }
+    .ch.app { background: #e0e7ff; color: #3730a3; font-weight: 600; }
+    .ch.suc { background: #e0f2fe; color: #075985; }
+    .ch.mas { background: #dcfce7; color: #166534; }
+    .ch.menos { background: #fee2e2; color: #991b1b; text-decoration: line-through; }
+    .sol-mot { font-size: 12px; color: #475569; font-style: italic; margin-top: 4px; }
+    .sol-est .sol-sub { margin-top: 4px; }
+    .sol-acc { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+    .kpi-card.clic { cursor: pointer; transition: box-shadow .12s, transform .12s; }
+    .kpi-card.clic:hover { box-shadow: 0 2px 8px rgba(15,23,42,.12); }
+    .kpi-card.sel { outline: 2px solid var(--ap-navy); outline-offset: -2px; }
+    @media (max-width: 1100px) {
+      .sol-cols { grid-template-columns: 1fr; gap: 6px; }
+      .sol-head { display: none; }
+      .sol-acc { justify-content: flex-start; }
+    }
+    .add-sel { height: 30px; margin-top: 4px; padding: 0 30px 0 10px; border: 1px dashed #94a3b8 !important; border-radius: 4px; background-color: #f8fafc !important; color: #1b3c5e !important; font-weight: 600; cursor: pointer; width: auto !important; min-width: 230px; }
+    .chk-grid.compacta { max-height: none; }
+    .chk-ley { font-size: 11.5px; color: #64748b; margin-top: 4px; }
+    .ed-resumen { margin-top: 10px; font-size: 12.5px; color: #1f2f44; }
+    @media (max-width: 900px) { .chk-grid, .chk-grid.roles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .cq-kv > span:nth-child(odd) { color: #64748b; }
+    .cq-acc { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .cq-ayuda { padding: 50px 20px; text-align: center; color: #64748b; font-size: 13px; line-height: 1.7; }
+    @media (max-width: 900px) { .cq-grid { grid-template-columns: 1fr; } }
+    .md-info { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 9px 12px; font-size: 12.5px; color: #1f2f44; line-height: 1.55; margin-bottom: 12px; }
+    .md-warn { margin-top: 8px; padding: 7px 12px; border-radius: 4px; font-size: 12.5px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 10px 18px; border-radius: 6px; font-size: 13px; z-index: 10000; display: none; max-width: 90vw; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+    #toast.err { background: #b91c1c; }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    @media (max-width: 900px) {
+        .sb-nav-label, .ap-app-txt, #hdr-user-name, .ap-brand span { display: none; }
+        .sb-nav-item { padding: 0 14px; }
+        .ap-filters select, .ap-filters input[type=text] { min-width: 150px; }
+        .ap-f-right { margin-left: 0; }
+        .md-grid { grid-template-columns: 1fr; }
+    }
+</style>
+</head>
+<body>
+
+<!-- ── Login ── -->
+<div id="login-modal">
+    <div class="lg-card">
+        <div class="lg-head">
+            <svg width="52" height="52" viewBox="0 0 26 26" fill="none" style="display:block;margin:0 auto 12px;">
+                <circle cx="13" cy="13" r="12" stroke="#00b4d8" stroke-width="1.8"/>
+                <ellipse cx="13" cy="13" rx="6" ry="4" fill="#00b4d8" opacity="0.85" transform="rotate(-20 13 13)"/>
+                <ellipse cx="13" cy="13" rx="6" ry="4" fill="#00b4d8" opacity="0.5" transform="rotate(30 13 13)"/>
+            </svg>
+            <div class="lg-title">NATURISA</div>
+            <div class="lg-sub">Control de Usuarios — AP1 Balanceado</div>
+        </div>
+        <div class="lg-f">
+            <label>Usuario</label>
+            <input type="text" id="login-user" placeholder="Ingresa tu usuario" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+        </div>
+        <div class="lg-f">
+            <label>Contraseña</label>
+            <input type="password" id="login-pass" placeholder="Ingresa tu contraseña" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+        <button class="lg-btn" id="btn-login" onclick="doLogin()">Ingresar</button>
+        <div id="modal-status"></div>
+    </div>
+</div>
+
+<!-- ── Barra superior ── -->
+<header class="ap-top" id="ap-top">
+    <div class="sb-logo">
+        <div class="ap-brand">
+            <svg width="30" height="22" viewBox="0 0 40 28" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round"><path d="M3 9c6-6 13-6 19 0s13 6 15 2"/><path d="M3 19c6-6 13-6 19 0s13 6 15 2" opacity=".75"/></svg>
+            <span>Naturisa</span>
+        </div>
+    </div>
+    <nav class="sb-nav">
+        <button class="sb-nav-item" data-tab="consulta" onclick="showTab('consulta')">
+            <svg class="sb-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <span class="sb-nav-label">Creación de usuario</span>
+        </button>
+        <button class="sb-nav-item" data-tab="solicitudes" onclick="showTab('solicitudes')">
+            <svg class="sb-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+            <span class="sb-nav-label">Solicitudes</span>
+            <span class="nav-count" id="cnt-pend" style="display:none"></span>
+        </button>
+        <button class="sb-nav-item" data-tab="admins" id="tab-admins" style="display:none" onclick="showTab('admins')">
+            <svg class="sb-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span class="sb-nav-label">Administradores</span>
+        </button>
+    </nav>
+    <div class="ap-top-right">
+        <div class="ap-app">
+            <span class="ap-app-txt"><span class="ap-app-name">Control de Usuarios</span><span class="sb-date" id="header-date"></span></span>
+        </div>
+        <div class="sb-footer">
+            <button class="hdr-user-btn" onclick="toggleUserMenu(event)">
+                <span class="hdr-user-av" id="hdr-user-av"></span>
+                <span id="hdr-user-name"></span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="hdr-user-dd" id="hdr-user-dd">
+                <div class="hdr-dd-head"><span id="hdr-user-fullname"></span><small id="hdr-user-rol"></small></div>
+                <button class="hdr-dd-item danger" onclick="logout()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Cerrar sesión
+                </button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="content-wrap" id="content-wrap">
+
+    <!-- ── PANTALLA: Creación de usuario (búsqueda por cédula) ── -->
+    <div class="screen" id="screen-consulta">
+        <div class="ap-filters">
+            <div class="fg"><label>Cédula</label><input type="text" id="cq-cedula" inputmode="numeric" maxlength="13" placeholder="Ej. 0912345678" onkeydown="if(event.key==='Enter')consultarCedula()"></div>
+            <button class="rep-btn rep-btn-p" id="cq-btn" onclick="consultarCedula()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Consultar
+            </button>
+        </div>
+        <div class="cq-area" id="cq-result">
+            <div class="cq-ayuda">Escribe una cédula para ver si la persona está en la empresa (RRHH),<br>si ya tiene usuario en AP1, sus aplicaciones con el rol en cada una y sus sucursales.</div>
+        </div>
+    </div>
+
+    <!-- ── PANTALLA: Solicitudes ── -->
+    <div class="screen" id="screen-solicitudes">
+        <div class="ap-filters">
+            <div class="fg" id="fg-sol-camp"><label>Campamento</label><select id="f-sol-camp" onchange="renderSolicitudes()"></select></div>
+            <div class="fg"><label>Tipo</label>
+                <select id="f-sol-tipo" onchange="renderSolicitudes()" style="min-width:170px">
+                    <option value="">— Todos los tipos —</option><option value="ALTA">Usuario nuevo</option><option value="CAMBIO">Edición</option><option value="BAJA">Baja</option>
+                </select>
+            </div>
+            <div class="fg"><label>Buscar</label><input type="text" id="f-sol-buscar" placeholder="Nombre, cédula o solicitante" oninput="renderSolicitudes()"></div>
+            <div class="ap-f-right">
+                <span id="bm-wrap" style="display:none;align-items:center;gap:8px">
+                        <span class="ap-ph-sub">Arrástralo a tu barra de favoritos →</span>
+                        <a id="bm-ap1" class="rep-btn" style="text-decoration:none" href="#" title="Arrástralo a la barra de favoritos. En el formulario de crear usuario de AP1, púlsalo para pegar los datos copiados."
+                           onclick="event.preventDefault(); abrirAyudaFavorito()">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                            Pegar en AP1</a>
+                    </span>
+                <button class="ap-sq" onclick="cargarSolicitudes()" title="Actualizar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="sl-area">
+            <div class="sl-tabs" id="sl-tabs"></div>
+            <div id="tbl-solicitudes"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
+        </div>
+    </div>
+
+    <!-- ── PANTALLA: Administradores ── -->
+    <div class="screen" id="screen-admins">
+        <div class="ap-filters">
+            <div class="fg"><label>Agregar administrador (usuario AP1)</label><input type="text" id="adm-nuevo" placeholder="Ej. gmachuca" onkeydown="if(event.key==='Enter')agregarAdmin()"></div>
+            <button class="rep-btn rep-btn-p" onclick="agregarAdmin()">Agregar</button>
+        </div>
+        <div class="ap-area">
+            <div class="ap-panel" style="flex:0 1 auto;max-width:760px">
+                <div class="ap-ph">
+                    <span class="ap-ph-t">Administradores</span>
+                    <span class="ap-ph-sub">Aprueban solicitudes y ven todos los campamentos. El resto entra como solicitante.</span>
+                </div>
+                <div class="ap-body" id="tbl-admins"><div class="loading"><span class="spinner"></span>Cargando…</div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal solicitud ── -->
+<div class="md-bg" id="modal-sol" onclick="if(event.target===this)cerrarModal('modal-sol')">
+    <div class="md">
+        <div class="md-h">
+            <div><div class="md-h-t" id="msol-titulo"></div><div class="md-h-s" id="msol-sub"></div></div>
+            <button class="md-x" onclick="cerrarModal('modal-sol')">Cerrar</button>
+        </div>
+        <div class="md-b" id="msol-body"></div>
+        <div class="md-f">
+            <div class="md-err" id="msol-error"></div>
+            <button class="rep-btn" onclick="cerrarModal('modal-sol')">Cancelar</button>
+            <button class="rep-btn rep-btn-p" id="msol-enviar" onclick="enviarSolicitud()">Enviar solicitud</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal resolver ── -->
+<div class="md-bg" id="modal-res" onclick="if(event.target===this)cerrarModal('modal-res')">
+    <div class="md">
+        <div class="md-h">
+            <div><div class="md-h-t" id="mres-titulo"></div><div class="md-h-s" id="mres-sub"></div></div>
+            <button class="md-x" onclick="cerrarModal('modal-res')">Cerrar</button>
+        </div>
+        <div class="md-b">
+            <div class="md-info" id="mres-info"></div>
+            <div class="fg"><label id="mres-label">Comentario</label><textarea id="mres-comentario" rows="3"></textarea></div>
+        </div>
+        <div class="md-f">
+            <div class="md-err" id="mres-error"></div>
+            <button class="rep-btn" onclick="cerrarModal('modal-res')">Cancelar</button>
+            <button class="rep-btn rep-btn-p" id="mres-ok" onclick="confirmarEstado()">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Ayuda: instalar el favorito "Pegar en AP1" ── -->
+<div class="md-bg" id="modal-bm" onclick="if(event.target===this)cerrarModal('modal-bm')">
+    <div class="md">
+        <div class="md-h">
+            <div><div class="md-h-t">Favorito "Pegar en AP1"</div><div class="md-h-s">Llena los campos del formulario de AP1 de una sola vez</div></div>
+            <button class="md-x" onclick="cerrarModal('modal-bm')">Cerrar</button>
+        </div>
+        <div class="md-b" style="font-size:13px;line-height:1.7;color:#1f2f44">
+            <b>Instalarlo (una sola vez)</b>
+            <ol style="padding-left:20px;margin:4px 0 12px">
+                <li>Muestra la barra de favoritos con <b>Ctrl + Shift + B</b>.</li>
+                <li>Arrastra este botón a la barra:
+                    <a id="bm-ap1-2" class="rep-btn rep-btn-sm" style="text-decoration:none;display:inline-flex" href="#" onclick="event.preventDefault()">Pegar en AP1</a></li>
+                <li>Si no se deja arrastrar: clic derecho en la barra → <b>Agregar página</b> (o <i>Agregar favorito</i>), nombre <b>Pegar en AP1</b>, y en la dirección pega el código de
+                    <button class="rep-btn rep-btn-sm" onclick="copiarCodigoFavorito(this)">Copiar código</button></li>
+            </ol>
+            <b>Usarlo</b>
+            <ol style="padding-left:20px;margin:4px 0 0">
+                <li>En la solicitud, pulsa el ícono de copiar junto al nombre.</li>
+                <li>En AP1 → Seguridad → crear usuario, pulsa el favorito <b>Pegar en AP1</b> (no Ctrl+V).</li>
+                <li>Elige Departamento y Cargo en sus listas y guarda.</li>
+            </ol>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  Control de Usuarios AP1 Balanceado
+//  El worker (/d1/usuarios/*) valida el login contra AP1, decide los campamentos del
+//  usuario y firma la sesion; esta pagina solo muestra lo que el worker le permite ver.
+// ══════════════════════════════════════════════════════
+const API_PROD  = 'https://naturisa-proxy.parragajonathan965.workers.dev';
+const API_LOCAL = 'http://localhost:8787';
+const ES_LOCAL  = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+let API = ES_LOCAL ? API_LOCAL : API_PROD;
+const SESSION_KEY = 'naturisa_usuarios_v1';
+
+let SES = null;          // { token, usuario, isAdmin, sucursales, roles, todasSucursales }
+let SOLICITUDES = [];
+let solCtx = null;       // contexto del modal de solicitud
+let resCtx = null;       // contexto del modal de resolucion
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtFecha = iso => iso ? new Date(iso).toLocaleString('es-EC', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+const LOADING = '<div class="loading"><span class="spinner"></span>Cargando…</div>';
+
+async function api(path, opts = {}) {
+  const headers = { Accept: 'application/json', ...(opts.body ? { 'Content-Type': 'application/json' } : {}) };
+  if (SES?.token) headers.Authorization = 'Bearer ' + SES.token;
+  let r;
+  try {
+    r = await fetch(API + path, { ...opts, headers });
+  } catch (e) {
+    if (API === API_LOCAL && e.name === 'TypeError') { API = API_PROD; r = await fetch(API + path, { ...opts, headers }); }
+    else throw e;
+  }
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401 && SES) { logout(); throw new Error(j.error || 'Sesión vencida'); }
+  if (!r.ok) throw new Error(j.error || 'Error ' + r.status);
+  return j;
+}
+
+function toast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = err ? 'err' : ''; t.style.display = 'block';
+  clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', err ? 6000 : 3000);
+}
+
+// ── Login / sesion ──────────────────────────────────────
+async function doLogin() {
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value;
+  const st = document.getElementById('modal-status');
+  const btn = document.getElementById('btn-login');
+  st.textContent = '';
+  if (!username || !password) { st.textContent = 'Ingresa usuario y contraseña'; return; }
+  btn.disabled = true; btn.textContent = 'Validando…';
+  try {
+    const j = await api('/d1/usuarios/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+    SES = j;
+    try { sessionStorage.setItem(SESSION_KEY, j.token); } catch {}
+    document.getElementById('login-pass').value = '';
+    iniciarApp();
+  } catch (e) {
+    st.textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Ingresar';
+  }
+}
+
+async function restaurarSesion() {
+  let token = null;
+  try { token = sessionStorage.getItem(SESSION_KEY); } catch {}
+  if (!token) return;
+  SES = { token };
+  try {
+    const j = await api('/d1/usuarios/sesion');
+    SES = { token, ...j };
+    iniciarApp();
+  } catch { SES = null; }
+}
+
+function logout() {
+  SES = null;
+  try { sessionStorage.removeItem(SESSION_KEY); } catch {}
+  document.getElementById('hdr-user-dd').classList.remove('open');
+  document.getElementById('ap-top').style.display = 'none';
+  document.getElementById('content-wrap').style.display = 'none';
+  document.getElementById('login-modal').style.display = 'flex';
+}
+
+function toggleUserMenu(e) {
+  e.stopPropagation();
+  document.getElementById('hdr-user-dd').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  const dd = document.getElementById('hdr-user-dd');
+  if (dd && !dd.contains(e.target)) dd.classList.remove('open');
+});
+
+function iniciarApp() {
+  document.getElementById('login-modal').style.display = 'none';
+  document.getElementById('ap-top').style.display = 'flex';
+  document.getElementById('content-wrap').style.display = 'flex';
+  document.getElementById('header-date').textContent = new Date().toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  const u = SES.usuario;
+  const partes = (u.nombre || u.username).split(' ').filter(Boolean);
+  document.getElementById('hdr-user-av').textContent = partes.slice(0, 2).map(p => p[0]).join('').toUpperCase();
+  // Nombre corto en la barra: primer nombre + primer apellido (formato AP1: 2 nombres + 2 apellidos)
+  document.getElementById('hdr-user-name').textContent = partes.length >= 4 ? `${partes[0]} ${partes[2]}` : (u.nombre || u.username);
+  document.getElementById('hdr-user-fullname').textContent = u.nombre;
+  document.getElementById('hdr-user-rol').textContent = `${u.username} · ${SES.isAdmin ? 'Administrador' : 'Solicitante'}`;
+  document.getElementById('tab-admins').style.display = SES.isAdmin ? 'flex' : 'none';
+  document.getElementById('bm-wrap').style.display = SES.isAdmin ? 'flex' : 'none';
+  document.getElementById('bm-ap1').href = document.getElementById('bm-ap1-2').href = codigoFavorito();
+
+  // Admin: fincas primero (son las que tienen alimentadores); el resto despues
+  const lista = SES.isAdmin
+    ? [...SES.sucursales.filter(s => s.tipo === 'FINCA'), ...SES.sucursales.filter(s => s.tipo !== 'FINCA')]
+    : SES.sucursales;
+  // Filtro de campamento en Solicitudes (con "todos" para admin o para quien tiene varios)
+  const fsc = document.getElementById('f-sol-camp');
+  fsc.innerHTML = (lista.length > 1 ? '<option value="">— Todos los campamentos —</option>' : '') +
+    lista.map(s => `<option value="${s.id}">${esc(s.nombre)}</option>`).join('');
+  document.getElementById('fg-sol-camp').style.display = lista.length ? 'flex' : 'none';
+
+  showTab('consulta');
+  cargarSolicitudes();
+}
+
+function nombreSucursal(id) {
+  return ((SES.todasSucursales || SES.sucursales).find(s => s.id === id) || {}).nombre || id;
+}
+
+function showTab(t) {
+  document.querySelectorAll('.sb-nav-item').forEach(el => el.classList.toggle('active', el.dataset.tab === t));
+  document.querySelectorAll('.screen').forEach(el => el.classList.toggle('active', el.id === 'screen-' + t));
+  if (t === 'admins') cargarAdmins();
+  if (t === 'consulta') setTimeout(() => document.getElementById('cq-cedula').focus(), 0);
+}
+
+const sinTildes = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+// ── Modal de solicitud (alta / baja / cambio) ───────────
+// Casillas de roles agrupadas por aplicacion. marcados: Set de roleId; actuales: Set de roleId que ya tiene (Editar)
+// visibles (opcional): Set de appId que se muestran; el resto queda detras de "+ Agregar otra aplicación"
+function selectorRoles(marcados, actuales, visibles) {
+  const apps = SES.rolesPorApp || [];
+  const ocultas = visibles ? apps.filter(a => !visibles.has(a.id)) : [];
+  return '<div class="apps-wrap">' + apps.map(a => {
+    const n = a.roles.filter(r => marcados.has(r.id)).length;
+    const abrir = n || (actuales && a.roles.some(r => actuales.has(r.id))) || a.id === 3;
+    return `<details class="app-sec ${visibles && !visibles.has(a.id) ? 'oculta' : ''}" data-sec="${a.id}" ${abrir ? 'open' : ''}><summary>${esc(a.nombre)}<span class="app-cnt" data-app="${a.id}">${n || ''}</span></summary>
+      <div class="chk-grid roles">${a.roles.map(r => `<label class="chk-it"><input type="checkbox" data-t="rid" data-app="${a.id}" value="${r.id}" ${marcados.has(r.id) ? 'checked' : ''} onchange="marcarCasillas()">${esc(r.nombre)}</label>`).join('')}</div>
+    </details>`;
+  }).join('') + '</div>' +
+  (ocultas.length ? `<select class="add-sel" onchange="mostrarApp(this)"><option value="">+ Agregar otra aplicación…</option>${ocultas.map(a => `<option value="${a.id}">${esc(a.nombre)}</option>`).join('')}</select>` : '');
+}
+
+// visibles (opcional): Set de sucursales que se muestran; el resto queda detras de "+ Agregar otra sucursal"
+function selectorSucursales(lista, marcadas, visibles) {
+  const ocultas = visibles ? lista.filter(x => !visibles.has(x.id)) : [];
+  return `<div class="chk-grid ${visibles ? 'compacta' : ''}" id="grid-suc">${lista.map(x => `<label class="chk-it ${visibles && !visibles.has(x.id) ? 'oculta' : ''}" data-suc="${x.id}"><input type="checkbox" data-t="suc" value="${x.id}" ${marcadas.has(x.id) ? 'checked' : ''} onchange="marcarCasillas()">${esc(x.nombre)}</label>`).join('')}
+    ${visibles && !visibles.size ? '<span class="sub" id="suc-vacia">Ninguna sucursal todavía: agrégala con el botón de abajo.</span>' : ''}</div>` +
+  (ocultas.length ? `<select class="add-sel" onchange="mostrarSucursal(this)"><option value="">+ Agregar otra sucursal…</option>${ocultas.map(x => `<option value="${x.id}">${esc(x.nombre)}</option>`).join('')}</select>` : '');
+}
+
+function mostrarApp(sel) {
+  const sec = document.querySelector(`#msol-body details[data-sec="${sel.value}"]`);
+  if (sec) { sec.classList.remove('oculta'); sec.open = true; sec.scrollIntoView({ block: 'nearest' }); }
+  sel.querySelector(`option[value="${sel.value}"]`)?.remove();
+  sel.value = '';
+  if (sel.options.length <= 1) sel.remove();
+}
+
+function mostrarSucursal(sel) {
+  const it = document.querySelector(`#msol-body label[data-suc="${sel.value}"]`);
+  if (it) { it.classList.remove('oculta'); it.querySelector('input').checked = true; }
+  document.getElementById('suc-vacia')?.remove();
+  sel.querySelector(`option[value="${sel.value}"]`)?.remove();
+  sel.value = '';
+  if (sel.options.length <= 1) sel.remove();
+  marcarCasillas();
+}
+
+// Cargos de campo (RRHH): su formulario arranca solo con AP1 Balanceado y la sucursal de RRHH
+function esCargoCampo(cargo) {
+  const c = sinTildes(cargo).toLowerCase();
+  return c.includes('trabajador acuicola') || c.startsWith('chofer') || c.includes('aireacion') || c.includes('jefe de campo');
+}
+
+function nombreRol(id) {
+  for (const a of (SES.rolesPorApp || [])) { const r = a.roles.find(x => x.id === id); if (r) return `${a.nombre} · ${r.nombre}`; }
+  for (const u of (CQ?.usuarios || [])) for (const a of u.aplicaciones) { const k = (a.roleIds || []).indexOf(id); if (k >= 0) return `${a.nombre} · ${a.roles[k]}`; }
+  return 'Rol ' + id;
+}
+
+// Sucursales que puede asignar quien pide: admin todas (fincas primero); solicitante solo las suyas
+function sucursalesAsignables() {
+  const todas = SES.isAdmin ? (SES.todasSucursales || SES.sucursales) : SES.sucursales;
+  return [...todas.filter(x => x.tipo === 'FINCA'), ...todas.filter(x => x.tipo !== 'FINCA')];
+}
+
+const casillas = t => [...document.querySelectorAll(`#msol-body input[data-t="${t}"]`)];
+
+// Pinta verde lo que se agrega y rojo lo que se quita (solo en Editar), y actualiza contadores y resumen
+function marcarCasillas() {
+  const ed = solCtx?.tipo === 'EDITAR';
+  casillas('suc').concat(casillas('rid')).forEach(x => {
+    const id = parseInt(x.value, 10);
+    const antes = ed && (x.dataset.t === 'suc' ? solCtx.actualesSuc.has(id) : solCtx.actualesRol.has(id));
+    x.parentElement.classList.toggle('add', ed && x.checked && !antes);
+    x.parentElement.classList.toggle('del', ed && !x.checked && antes);
+  });
+  document.querySelectorAll('#msol-body .app-cnt').forEach(c => {
+    const n = casillas('rid').filter(x => x.dataset.app === c.dataset.app && x.checked).length;
+    c.textContent = n || '';
+  });
+  const res = document.getElementById('ed-resumen');
+  if (!res) return;
+  if (ed) {
+    const d = difEditar();
+    const partes = [];
+    if (d.rolAdd.length || d.rolDel.length) partes.push('Roles: ' + [...d.rolAdd.map(id => '+ ' + nombreRol(id)), ...d.rolDel.map(id => '− ' + nombreRol(id))].join(', '));
+    if (d.sucAdd.length || d.sucDel.length) partes.push('Sucursales: ' + [...d.sucAdd.map(id => '+ ' + nombreSucursal(id)), ...d.sucDel.map(id => '− ' + nombreSucursal(id))].join(', '));
+    res.innerHTML = partes.length ? '<b>Cambios:</b> ' + esc(partes.join(' · ')) : '<span class="sub">Sin cambios todavía.</span>';
+  } else {
+    const roles = casillas('rid').filter(x => x.checked).map(x => nombreRol(parseInt(x.value, 10)));
+    const sucs = casillas('suc').filter(x => x.checked).map(x => nombreSucursal(parseInt(x.value, 10)));
+    res.innerHTML = `<b>Se pedirá:</b> ${roles.length ? esc(roles.join(', ')) : '<span class="sub">ningún rol marcado</span>'}` +
+      ` · <b>Sucursales:</b> ${sucs.length ? esc(sucs.join(', ')) : '<span class="sub">ninguna</span>'}`;
+  }
+}
+
+// ctx (opcional, desde la consulta): { usuario, campamentos: [ids], prefill: {...} }
+function abrirSolicitud(tipo, idUser, ctx = {}) {
+  const u = ctx.usuario || null;
+  const propias = sucursalesAsignables();
+  const camps = ctx.campamentos ? propias.filter(x => ctx.campamentos.includes(x.id)) : propias;
+  const sidDef = (camps[0] || {}).id;
+  if (!camps.length || !sidDef) { toast('No tienes un campamento desde donde pedir esta solicitud', true); return; }
+  solCtx = { tipo, u, origen: ctx.usuario || ctx.prefill ? 'consulta' : 'lista' };
+  const pf = ctx.prefill || {};
+  const cab = u ? `<div class="md-info"><b>${esc(u.nombres)} ${esc(u.apellidos)}</b><br>CI ${esc(u.identificacion)} · ${esc(u.username)} · ${u.roles.map(esc).join(', ') || 'sin rol en AP1 Balanceado'}<br>Cargo: ${esc(u.cargo || 'Sin cargo')}${u.departamento ? ' · ' + esc(u.departamento) : ''}</div>` : '';
+  const opts = (lista, sel) => lista.map(x => `<option value="${x.id}" ${sinTildes(x.nombre).toLowerCase() === sinTildes(sel).toLowerCase() ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('');
+  const campSel = `<div class="fg"><label>Campamento *</label><select id="s-camp">${camps.map(x => `<option value="${x.id}" ${x.id === sidDef ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select></div>`;
+  const cargoSug = (SES.cargos || []).some(c => sinTildes(c.nombre).toLowerCase() === sinTildes(pf.cargo).toLowerCase()) ? pf.cargo : 'Trabajador Acuícola';
+  let html = '';
+  if (tipo === 'ALTA') {
+    // Sugerencias: rol segun el cargo de RRHH y sucursal segun su centro de costo
+    const norm = t => sinTildes(t).toLowerCase().trim();
+    const balanceado = (SES.rolesPorApp || []).find(a => a.id === 3);
+    const rolDe = n => balanceado?.roles.find(r => r.nombre === n)?.id;
+    const c = norm(pf.cargo);
+    const rolesSug = new Set([c.includes('acuicola') || c.includes('alimentador') ? rolDe('ALIMENTADOR') : null, c.startsWith('chofer') ? rolDe('TRANSPORTISTA') : null].filter(Boolean));
+    const porCentro = propias.find(x => pf.centroCosto && norm(x.nombre) === norm(pf.centroCosto)) ||
+      propias.find(x => pf.centroCosto && (norm(x.nombre).includes(norm(pf.centroCosto)) || norm(pf.centroCosto).includes(norm(x.nombre))));
+    const sucSug = new Set([porCentro ? porCentro.id : (ctx.prefill ? null : sidDef)].filter(Boolean));
+    const campo = esCargoCampo(pf.cargo);
+    html = `<div class="md-grid">
+        <div class="fg"><label>Cédula *</label><input type="text" id="s-ced" inputmode="numeric" maxlength="13" value="${esc(pf.cedula || '')}"></div>
+        <div class="fg"><label>Teléfono</label><input type="text" id="s-tel" inputmode="tel" maxlength="10" value="${esc(pf.telefono || '')}"></div>
+        <div class="fg"><label>Nombres *</label><input type="text" id="s-nom" value="${esc(pf.nombres || '')}"></div>
+        <div class="fg"><label>Apellidos *</label><input type="text" id="s-ape" value="${esc(pf.apellidos || '')}"></div>
+        <div class="fg"><label>Departamento</label><select id="s-dep"><option value="">— Seleccionar —</option>${opts(SES.departamentos || [], 'Producción')}</select></div>
+        <div class="fg"><label>Cargo</label><select id="s-cargo"><option value="">— Seleccionar —</option>${opts(SES.cargos || [], cargoSug)}</select></div>
+      </div>
+      <div class="fg"><label>Correo</label><input type="text" id="s-mail" inputmode="email" value="${esc(pf.email || '')}"></div>
+      <div class="fg"><label>Aplicaciones y roles * <span class="sub" style="font-weight:400">(puede tener varias aplicaciones y varios roles en cada una)</span></label>${selectorRoles(rolesSug, null, campo ? new Set([3]) : null)}</div>
+      <div class="fg"><label>Sucursales * <span class="sub" style="font-weight:400">(una o varias${campo ? '; la marcada viene de RRHH' : ''})</span></label>${selectorSucursales(propias, sucSug, campo ? sucSug : null)}</div>
+      <div class="fg"><label>Observación</label><textarea id="s-motivo" rows="2" placeholder="Ej. reemplazo de …, fecha de ingreso"></textarea></div>
+      <div class="ed-resumen" id="ed-resumen"></div>`;
+  } else if (tipo === 'BAJA') {
+    html = cab + campSel + `<div class="fg"><label>Motivo de la baja *</label><textarea id="s-motivo" rows="3" placeholder="Ej. renuncia, fin de contrato, traslado"></textarea></div>`;
+  }
+  document.getElementById('msol-titulo').textContent = { ALTA: 'Solicitar usuario nuevo', BAJA: 'Dar de baja al usuario', CAMBIO: 'Solicitar cambio de rol, cargo o campamento' }[tipo];
+  document.getElementById('msol-sub').textContent = pf.cargo ? `Datos tomados de RRHH · ${pf.cargo}` : 'Control de Usuarios';
+  document.getElementById('msol-body').innerHTML = html;
+  document.getElementById('msol-error').textContent = '';
+  document.querySelector('#modal-sol .md').classList.toggle('md-ancho', tipo === 'ALTA');
+  document.getElementById('modal-sol').style.display = 'flex';
+  if (tipo === 'ALTA') marcarCasillas();
+}
+
+async function enviarSolicitud() {
+  const { tipo, u, origen } = solCtx;
+  const v = id => (document.getElementById(id)?.value || '').trim();
+  const err = m => { document.getElementById('msol-error').textContent = m; };
+  const body = { tipo, subsidiaryId: parseInt(v('s-camp'), 10), motivo: v('s-motivo') };
+  if (tipo === 'EDITAR') {
+    const dif = difEditar();
+    if (!dif.total && !v('s-cargo')) return err('No hay cambios: marca o desmarca alguna sucursal o rol.');
+    body.tipo = 'CAMBIO';
+    body.subsidiaryId = solCtx.sid;
+    body.userId = u.idUser;
+    body.datos = { sucursalesAgregar: dif.sucAdd, sucursalesQuitar: dif.sucDel, rolesAgregarIds: dif.rolAdd, rolesQuitarIds: dif.rolDel,
+      cargoId: v('s-cargo') ? parseInt(v('s-cargo'), 10) : null };
+  } else if (tipo === 'ALTA') {
+    const roleIds = casillas('rid').filter(x => x.checked).map(x => parseInt(x.value, 10));
+    const sucs = casillas('suc').filter(x => x.checked).map(x => parseInt(x.value, 10));
+    if (!roleIds.length) return err('Marca al menos un rol en alguna aplicación.');
+    if (!sucs.length) return err('Marca al menos una sucursal.');
+    body.subsidiaryId = sucs[0];
+    body.datos = { identificacion: v('s-ced'), nombres: v('s-nom'), apellidos: v('s-ape'), telefono: v('s-tel'), email: v('s-mail'),
+      roleIds, sucursales: sucs,
+      departmentId: v('s-dep') ? parseInt(v('s-dep'), 10) : null, cargoId: v('s-cargo') ? parseInt(v('s-cargo'), 10) : null };
+  } else {
+    body.userId = u.idUser;
+  }
+  const btn = document.getElementById('msol-enviar');
+  btn.disabled = true;
+  try {
+    const j = await api('/d1/usuarios/solicitudes', { method: 'POST', body: JSON.stringify(body) });
+    cerrarModal('modal-sol');
+    toast(`Solicitud #${j.id} enviada`);
+    cargarSolicitudes();
+    if (origen === 'consulta') consultarCedula();
+  } catch (e) {
+    err(e.message);
+  } finally { btn.disabled = false; }
+}
+
+// ── Consulta por cedula ─────────────────────────────────
+let CQ = null;   // ultimo resultado
+
+async function consultarCedula() {
+  const ced = document.getElementById('cq-cedula').value.replace(/\D/g, '');
+  const cont = document.getElementById('cq-result');
+  if (!/^\d{10,13}$/.test(ced)) { toast('Ingresa una cédula de 10 dígitos', true); return; }
+  document.getElementById('cq-cedula').value = ced;
+  cont.innerHTML = LOADING;
+  try {
+    CQ = await api('/d1/usuarios/consulta?cedula=' + ced);
+    renderConsulta();
+  } catch (e) {
+    cont.innerHTML = `<div class="cq-ayuda">${esc(e.message)}</div>`;
+  }
+}
+
+function renderConsulta() {
+  const j = CQ;
+  const rh = j.empresa.registros;
+  const actual = rh.find(r => r.estado === 'ACTIVO') || rh[0] || null;
+  const u0 = j.usuarios[0] || null;
+  const encontrado = !!(actual || u0);
+  const nombre = actual ? `${actual.nombres} ${actual.apellidos}` : (u0 ? `${u0.nombres} ${u0.apellidos}` : 'Persona no encontrada');
+  const iniciales = encontrado ? nombre.split(' ').filter(Boolean).filter((_, i, a) => i === 0 || i === Math.min(2, a.length - 1)).map(p => p[0]).join('').toUpperCase() : '?';
+
+  const chipEmpresa = !j.rrhhDisponible ? '<span class="rep-st">RRHH no disponible</span>'
+    : j.empresa.activo ? ''
+    : rh.length ? `<span class="rep-st RECHAZADA">Ya no trabaja (${esc(rh[0].estado)})</span>`
+    : '<span class="rep-st INACTIVO">No registrado en RRHH</span>';
+  const chipUsuario = !j.usuarios.length ? '<span class="rep-st PENDIENTE">No tiene usuario AP1</span>'
+    : j.usuarios.map(u => `<span class="rep-st ${u.estado === 'ACTIVO' ? 'APROBADA' : 'INACTIVO'}">Usuario ${esc(u.username)} · ${esc(u.estado)}</span>`).join(' ');
+
+  // Acciones: sin usuario -> Solicitar usuario; con usuario -> Editar (sucursales y roles) y Dar de baja
+  let acciones = '';
+  if (!j.usuarios.length) {
+    acciones = j.altaAbierta
+      ? `<span class="rep-st PENDIENTE">Usuario ya solicitado (#${j.altaAbierta.id}, ${esc(j.altaAbierta.estado)})</span>`
+      : `<button class="rep-btn rep-btn-p" onclick="cqAlta()">+ Solicitar usuario</button>`;
+  } else {
+    acciones = j.usuarios.map((u, i) => {
+      if (u.solicitudAbierta) return `<span class="rep-st ${esc(u.solicitudAbierta.tipo)}">Solicitud abierta #${u.solicitudAbierta.id} ${esc(u.solicitudAbierta.tipo)} · ${esc(u.solicitudAbierta.estado)}</span>`;
+      if (!u.sucursalesGestionables.length && !SES.isAdmin) return `<span class="sub">${esc(u.username)}: no está en ninguno de tus campamentos</span>`;
+      return `<button class="rep-btn rep-btn-p" onclick="abrirEditar(${i})">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          Editar${j.usuarios.length > 1 ? ' ' + esc(u.username) : ''}</button>` +
+        (u.estado === 'ACTIVO' ? `<button class="rep-btn rep-btn-x" onclick="cqSolicitud('BAJA', ${i})">Dar de baja</button>` : '');
+    }).join('');
+  }
+  const aviso = j.rrhhDisponible && !j.empresa.activo && j.usuarios.some(u => u.estado === 'ACTIVO')
+    ? '<div class="md-warn">Tiene usuario activo en AP1 pero no figura como empleado activo en RRHH. Revisa si corresponde darle de baja.</div>' : '';
+
+  const dato = (k, v) => `<div class="cq-dato"><span>${k}</span><span title="${esc(v || '')}">${esc(v || '—')}</span></div>`;
+  // Contacto: el de RRHH; si no tiene, el del usuario AP1 (sin los telefonos de relleno tipo 0999999999)
+  const telValido = t => { const d = String(t || '').replace(/\D/g, ''); return d.length >= 7 && !/^0?(\d)\1+$/.test(d) ? t : ''; };
+  const telefono = telValido(actual?.telefono) || j.usuarios.map(u => telValido(u.telefono)).find(Boolean) || '';
+  const correo = (actual?.email || '').trim() || j.usuarios.map(u => (u.email || '').trim()).find(Boolean) || '';
+  const celdas = actual
+    ? [dato('Estado en RRHH', actual.estado), dato('Cargo', actual.cargo), dato('Centro de costo', actual.centroCosto), dato('Área', actual.area)]
+    : [];
+  if (telefono) celdas.push(dato('Teléfono', telefono));
+  if (correo) celdas.push(dato('Correo', correo));
+  if (!actual) celdas.unshift(`<div class="cq-vacio">${j.rrhhDisponible ? 'No hay registros de esta cédula en RRHH.' : 'No se pudo consultar RRHH.'}</div>`);
+  const info = `<div class="cq-info">${celdas.join('')}</div>`;
+  const panelesUsuario = j.usuarios.length ? j.usuarios.map(u => `<div class="cq-panel">
+      <div class="ap-ph"><span class="ap-ph-t">Usuario AP1 · ${esc(u.username)}</span><span class="ap-ph-r"><span class="rep-st ${esc(u.estado)}">${esc(u.estado)}</span></span></div>
+      <div class="cq-body"><div class="cq-kv">
+        <span>Nombre en AP1</span><span>${esc(u.nombres)} ${esc(u.apellidos)}</span>
+        <span>Correo</span><span>${esc(u.email) || '—'}</span>
+        <span>Teléfono</span><span>${esc(u.telefono) || '—'}</span>
+        <span>Cargo en AP1</span><span>${esc(u.cargoAp1 || 'Sin cargo')}${u.departamentoAp1 ? ' · ' + esc(u.departamentoAp1) : ''}</span>
+      </div></div>
+      <table class="ap-tbl"><thead><tr><th>Aplicación</th><th>Rol</th></tr></thead><tbody>${
+        u.aplicaciones.length ? u.aplicaciones.map(a => `<tr><td>${esc(a.nombre)}</td><td>${a.roles.map(r => `<span class="rep-chip">${esc(r)}</span>`).join('')}</td></tr>`).join('')
+          : '<tr><td colspan="2" class="sub">Sin aplicaciones asignadas</td></tr>'
+      }</tbody></table>
+      <div class="ap-ph" style="border-top:1px solid var(--ap-line)"><span class="ap-ph-t">Sucursales asignadas</span><span class="ap-ph-sub">${u.sucursales.length}</span></div>
+      <div class="cq-body">${u.sucursales.length ? u.sucursales.map(x => `<span class="rep-chip">${esc(x.nombre)}</span>`).join('') : '<span class="sub">Sin sucursales asignadas</span>'}</div>
+    </div>`).join('')
+    : `<div class="cq-panel"><div class="ap-ph"><span class="ap-ph-t">Usuario AP1</span></div><div class="cq-body"><span class="sub">Esta cédula no tiene usuario en AP1.</span></div></div>`;
+
+  document.getElementById('cq-result').innerHTML = `
+    <div class="cq-panel cq-ficha">
+      <div class="cq-top">
+        <div class="cq-av ${encontrado ? '' : 'sin'}">${esc(iniciales)}</div>
+        <div class="cq-persona">
+          <div class="cq-nombre">${esc(nombre)}</div>
+          <div class="cq-ced">CI ${esc(j.cedula)}</div>
+          <div class="cq-chips">${chipEmpresa}${chipUsuario}</div>
+        </div>
+        ${info}
+        <div class="cq-acc">${acciones}</div>
+      </div>
+      ${aviso ? `<div class="cq-extra">${aviso}</div>` : ''}
+    </div>
+    <div class="${j.usuarios.length > 1 ? 'cq-grid' : ''}">${panelesUsuario}</div>`;
+}
+
+function cqAlta() {
+  const r = CQ.empresa.registros.find(x => x.estado === 'ACTIVO') || CQ.empresa.registros[0] || {};
+  abrirSolicitud('ALTA', null, { prefill: { cedula: CQ.cedula, nombres: r.nombres, apellidos: r.apellidos, telefono: r.telefono, email: r.email, cargo: r.cargo, centroCosto: r.centroCosto } });
+}
+
+function usuarioDeConsulta(i) {
+  const u = CQ.usuarios[i];
+  const r = CQ.empresa.registros.find(x => x.estado === 'ACTIVO');
+  return { idUser: u.idUser, nombres: u.nombres, apellidos: u.apellidos, identificacion: CQ.cedula, username: u.username,
+    roles: u.rolesBalanceado, cargo: r?.cargo || u.cargoAp1, departamento: r ? r.centroCosto : u.departamentoAp1 };
+}
+
+function cqSolicitud(tipo, i) {
+  abrirSolicitud(tipo, null, { campamentos: CQ.usuarios[i].sucursalesGestionables, usuario: usuarioDeConsulta(i) });
+}
+
+// ── Editar: marcar / desmarcar sucursales y roles (de cualquier aplicacion) ──
+function abrirEditar(i, origen) {
+  const cu = CQ.usuarios[i];
+  const u = usuarioDeConsulta(i);
+  const propias = sucursalesAsignables();
+  const actualesSuc = new Set(cu.sucursales.map(x => x.id));
+  const actualesRol = new Set(cu.aplicaciones.flatMap(a => a.roleIds || []));
+  const fuera = cu.sucursales.filter(x => !propias.some(p => p.id === x.id));
+  // La solicitud se registra en un campamento del usuario que quien pide maneja
+  const sid = cu.sucursalesGestionables[0] || (SES.isAdmin ? (cu.sucursales[0] || propias[0] || {}).id : null);
+  solCtx = { tipo: 'EDITAR', u, origen: origen || 'consulta', sid, actualesSuc, actualesRol };
+  // Roles que tiene hoy pero ya no estan activos en el catalogo: se muestran para poder quitarlos
+  const enCatalogo = new Set((SES.rolesPorApp || []).flatMap(a => a.roles.map(r => r.id)));
+  const huerfanos = cu.aplicaciones.flatMap(a => (a.roleIds || []).map((id, k) => ({ id, txt: `${a.nombre} · ${a.roles[k]}` }))).filter(x => !enCatalogo.has(x.id));
+  const opts = (lista) => lista.map(x => `<option value="${x.id}">${esc(x.nombre)}</option>`).join('');
+
+  document.getElementById('msol-titulo').textContent = 'Editar usuario ' + cu.username;
+  document.getElementById('msol-sub').textContent = `${u.nombres} ${u.apellidos} · CI ${CQ.cedula}`;
+  document.getElementById('msol-body').innerHTML = `
+    <div class="fg"><label>Aplicaciones y roles</label>${selectorRoles(actualesRol, actualesRol, new Set([3, ...cu.aplicaciones.map(a => a.id)]))}
+      ${huerfanos.length ? `<div class="chk-grid roles" style="margin-top:4px">${huerfanos.map(x => `<label class="chk-it"><input type="checkbox" data-t="rid" value="${x.id}" checked onchange="marcarCasillas()">${esc(x.txt)} (inactivo)</label>`).join('')}</div>` : ''}
+    </div>
+    <div class="fg"><label>Sucursales asignadas</label>
+      ${selectorSucursales(propias, actualesSuc, actualesSuc)}
+      <div class="chk-ley">Verde = se agrega · Rojo = se quita.${fuera.length ? ` También está en: ${fuera.map(x => esc(x.nombre)).join(', ')} (no las manejas).` : ''}</div>
+    </div>
+    <div class="md-grid">
+      <div class="fg"><label>Nuevo cargo (opcional)</label><select id="s-cargo"><option value="">— Sin cambio —</option>${opts(SES.cargos || [])}</select></div>
+    </div>
+    <div class="fg"><label>Motivo *</label><textarea id="s-motivo" rows="2" placeholder="Ej. traslado a Bonanza, ahora también es transportista"></textarea></div>
+    <div class="ed-resumen" id="ed-resumen"></div>`;
+  document.getElementById('msol-error').textContent = '';
+  document.querySelector('#modal-sol .md').classList.add('md-ancho');
+  document.getElementById('modal-sol').style.display = 'flex';
+  marcarCasillas();
+}
+
+function difEditar() {
+  const { actualesSuc, actualesRol } = solCtx;
+  const on = t => new Set(casillas(t).filter(x => x.checked).map(x => parseInt(x.value, 10)));
+  const vis = t => casillas(t).map(x => parseInt(x.value, 10));
+  const sucOn = on('suc'), rolOn = on('rid');
+  const d = {
+    sucAdd: vis('suc').filter(id => sucOn.has(id) && !actualesSuc.has(id)),
+    sucDel: vis('suc').filter(id => !sucOn.has(id) && actualesSuc.has(id)),
+    rolAdd: [...new Set(vis('rid'))].filter(id => rolOn.has(id) && !actualesRol.has(id)),
+    rolDel: [...new Set(vis('rid'))].filter(id => !rolOn.has(id) && actualesRol.has(id))
+  };
+  d.total = d.sucAdd.length + d.sucDel.length + d.rolAdd.length + d.rolDel.length;
+  return d;
+}
+
+function cerrarModal(id) { document.getElementById(id).style.display = 'none'; }
+
+// ── Solicitudes ─────────────────────────────────────────
+async function cargarSolicitudes() {
+  try {
+    const j = await api('/d1/usuarios/solicitudes');
+    SOLICITUDES = j.data;
+    renderSolicitudes();
+  } catch (e) {
+    document.getElementById('tbl-solicitudes').innerHTML = `<div class="empty">No se pudo cargar: ${esc(e.message)}</div>`;
+  }
+}
+
+// "Jonathan Joaquin Parraga Mendoza" -> "Jonathan Parraga" (AP1 guarda 2 nombres + 2 apellidos)
+function nombreCorto(n) {
+  const p = String(n || '').trim().split(/\s+/).filter(Boolean);
+  if (p.length >= 4) return `${p[0]} ${p[2]}`;
+  if (p.length === 3) return `${p[0]} ${p[1]}`;
+  return p.join(' ');
+}
+
+// Quien aprobo; solicitudes anteriores al campo aprobado_por usan quien la resolvio
+function aprobadorSol(s) {
+  if (s.aprobado_por) return `<div class="sol-nom" style="font-weight:500" title="${esc(s.aprobado_nombre || s.aprobado_por)}">${esc(nombreCorto(s.aprobado_nombre) || s.aprobado_por)}</div>`;
+  if (['APROBADA', 'EJECUTADA'].includes(s.estado) && s.resuelto_por) return `<div class="sol-nom" style="font-weight:500" title="${esc(s.resuelto_nombre || s.resuelto_por)}">${esc(nombreCorto(s.resuelto_nombre) || s.resuelto_por)}</div>`;
+  return '<span class="sol-sub">—</span>';
+}
+
+const fechaCorta = iso => iso ? new Date(iso).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+
+function datosSol(s) { try { return JSON.parse(s.datos || '{}'); } catch { return {}; } }
+
+// Persona afectada: nombre y debajo un dato por linea. Un solo icono junto al nombre copia todo
+// en el formato "Etiqueta: valor" con las mismas etiquetas del formulario de AP1 → Seguridad,
+// que es lo que lee el favorito "Pegar en AP1" para llenar el formulario de una vez.
+function personaSol(s, d) {
+  const alta = s.tipo === 'ALTA';
+  const nombre = alta ? `${d.nombres || ''} ${d.apellidos || ''}`.trim() : s.user_nombre;
+  const campos = alta
+    ? [['Identificación', d.identificacion], ['Nombres', d.nombres], ['Apellidos', d.apellidos], ['Teléfono', d.telefono],
+       ['Correo electrónico', d.email], ['Departamento', d.departamentoNombre], ['Cargo', d.cargoNombre]]
+    : [['Identificación', s.user_identificacion], ['Cargo', d.cargoActual]];
+  const conValor = campos.filter(([, v]) => v);
+  const texto = conValor.map(([k, v]) => `${k}: ${v}`).join('\n');
+  const etiqueta = k => k === 'Correo electrónico' ? 'Correo' : k;
+  return `<div class="per-top"><span class="sol-nom">${esc(nombre || '—')}</span>` +
+    `<button class="cp" title="Copiar los datos para pegarlos en AP1" data-v="${esc(texto)}" onclick="copiar(this)">${ICONO_COPIAR}</button></div>` +
+    // Nombres y apellidos no se repiten en pantalla (ya estan en el nombre de arriba); el boton si los copia por separado
+    conValor.filter(([k]) => k !== 'Nombres' && k !== 'Apellidos')
+      .map(([k, v]) => `<div class="per-lin"><span class="per-k">${etiqueta(k)}</span><span class="per-v" title="${esc(v)}">${esc(v)}</span></div>`).join('');
+}
+
+const ICONO_COPIAR = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+const ICONO_OK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="20 6 9 17 4 12"/></svg>';
+
+// Favorito "Pegar en AP1": se ejecuta DENTRO de la pagina de AP1 (por eso no usa nada de esta pantalla).
+// Lee el portapapeles ("Etiqueta: valor" por linea), busca cada etiqueta del formulario de crear usuario
+// y escribe el valor en su campo, avisando a Angular con los eventos input/change/blur.
+async function pegarEnAp1() {
+  const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  let texto = '';
+  try { texto = await navigator.clipboard.readText(); } catch (e) {}
+  if (!/identificaci/i.test(texto)) texto = prompt('Pega aquí (Ctrl+V) los datos copiados en Control de Usuarios:') || '';
+  if (!texto) return;
+  const d = {};
+  texto.split(/\r?\n/).forEach(l => { const i = l.indexOf(':'); if (i > 0) d[norm(l.slice(0, i))] = l.slice(i + 1).trim(); });
+  const campos = ['identificacion', 'nombres', 'apellidos', 'telefono', 'correo electronico'];
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  let llenos = 0; const faltan = [];
+  for (const k of campos) {
+    if (!d[k]) continue;
+    const etiquetas = [...document.querySelectorAll('label, span, div, p')].filter(e => norm(e.textContent) === k);
+    const et = etiquetas[etiquetas.length - 1];
+    let inp = et && et.htmlFor ? document.getElementById(et.htmlFor) : null;
+    for (let c = et, j = 0; c && !inp && j < 4; j++) { c = c.parentElement; inp = c && c.querySelector('input:not([type=hidden]):not([type=checkbox]):not([type=radio])'); }
+    if (!inp) { faltan.push(k); continue; }
+    inp.focus();
+    setter.call(inp, d[k]);
+    ['input', 'change', 'blur'].forEach(ev => inp.dispatchEvent(new Event(ev, { bubbles: true })));
+    llenos++;
+  }
+  alert(llenos + ' campos llenados.' + (faltan.length ? '\nNo se encontró en esta página: ' + faltan.join(', ') + '.' : '') +
+    '\n\nDepartamento y Cargo elígelos en la lista' + (d.departamento || d.cargo ? ': ' + [d.departamento, d.cargo].filter(Boolean).join(' / ') : '.'));
+}
+
+function codigoFavorito() { return 'javascript:(' + encodeURIComponent(pegarEnAp1.toString()) + ')();void 0'; }
+function abrirAyudaFavorito() { document.getElementById('modal-bm').style.display = 'flex'; }
+async function copiarCodigoFavorito(btn) {
+  await alPortapapeles(codigoFavorito());
+  btn.textContent = 'Código copiado';
+  toast('Código copiado: pégalo como dirección (URL) del favorito');
+}
+
+async function alPortapapeles(v) {
+  try {
+    await navigator.clipboard.writeText(v);
+  } catch {
+    // Respaldo para navegadores sin acceso al portapapeles
+    const t = document.createElement('textarea');
+    t.value = v; t.style.position = 'fixed'; t.style.opacity = '0';
+    document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove();
+  }
+}
+
+async function copiar(btn) {
+  const v = btn.dataset.v || '';
+  await alPortapapeles(v);
+  btn.innerHTML = ICONO_OK; btn.classList.add('ok');
+  setTimeout(() => { btn.innerHTML = ICONO_COPIAR; btn.classList.remove('ok'); }, 1200);
+  toast('Datos copiados. No uses Ctrl+V: en el formulario de AP1 pulsa el favorito "Pegar en AP1".');
+}
+
+// "AP1 Balanceado · ALIMENTADOR" -> { app, rol }; los nombres antiguos (solo el rol) son de AP1 Balanceado
+const parteRol = n => { const [a, ...r] = String(n).split(' · '); return r.length ? { app: a, rol: r.join(' · ') } : { app: 'AP1 Balanceado', rol: a }; };
+const signo = clase => clase === 'mas' ? '+ ' : clase === 'menos' ? '− ' : '';
+// Lineas Aplicacion / Rol a partir de grupos [{ nombres, clase }]
+function lineasAppRol(grupos) {
+  const items = grupos.flatMap(g => (g.nombres || []).map(n => ({ ...parteRol(n), clase: g.clase || '' })));
+  if (!items.length) return '';
+  const apps = [...new Set(items.map(x => x.app))];
+  const varias = apps.length > 1;
+  return linea('Aplicación', apps.map(a => `<span class="ch app">${esc(a)}</span>`).join('')) +
+    linea('Rol', items.map(x => `<span class="ch ${x.clase}" title="${esc(x.app)}">${signo(x.clase)}${esc(x.rol)}${varias ? ` <span style="opacity:.6">(${esc(x.app)})</span>` : ''}</span>`).join(''));
+}
+const chipsSuc = (nombres, clase) => (nombres || []).map(n => `<span class="ch ${clase || 'suc'}">${signo(clase)}${esc(n)}</span>`).join('');
+const linea = (k, html) => html ? `<div class="sol-lin"><span class="sol-k">${k}</span>${html}</div>` : '';
+
+// Que se pide: Aplicacion, Rol y Sucursal
+function pedidoSol(s, d, conMotivo) {
+  let h = '';
+  if (s.tipo === 'ALTA') {
+    const roles = (d.rolesNombres || []).length ? d.rolesNombres : (d.rol ? ['AP1 Balanceado · ' + d.rol] : []);
+    h += lineasAppRol([{ nombres: roles }]);
+    h += linea('Sucursal', chipsSuc(d.sucursalesNombres));
+  } else if (s.tipo === 'CAMBIO') {
+    h += lineasAppRol([
+      { nombres: d.rolesAgregarNombres, clase: 'mas' }, { nombres: d.rolesQuitarNombres, clase: 'menos' },
+      { nombres: d.rolesAgregar, clase: 'mas' }, { nombres: d.rolesQuitar, clase: 'menos' },
+      { nombres: d.rol ? [d.rol] : [], clase: 'mas' }
+    ]);
+    h += linea('Sucursal', chipsSuc(d.sucursalesAgregarNombres, 'mas') + chipsSuc(d.sucursalesQuitarNombres, 'menos') +
+      (d.subsidiaryDestinoId ? chipsSuc([d.subsidiaryDestinoNombre || d.subsidiaryDestinoId], 'mas') : ''));
+    if (d.cargoId) h += linea('Cargo', `<span class="ch menos">${esc(d.cargoActual || 'Sin cargo')}</span><span class="ch mas">${esc(d.cargoNombre || d.cargoId)}</span>`);
+  } else {
+    h += `<div class="sol-lin"><span class="ch menos" style="text-decoration:none">Dar de baja el usuario</span></div>`;
+    h += lineasAppRol([{ nombres: d.rolesActuales }]);
+  }
+  if (conMotivo && s.motivo) h += `<div class="sol-mot">“${esc(s.motivo)}”</div>`;
+  return h;
+}
+
+// Usado en la ventana de aprobar / rechazar
+function detalleSolicitud(s) {
+  const d = datosSol(s);
+  return personaSol(s, d) + `<div style="margin-top:6px">${pedidoSol(s, d, false)}</div>`;
+}
+
+const ESTADOS_SOL = {
+  PENDIENTE: { txt: 'Pendiente', color: '#f59e0b' }, APROBADA: { txt: 'Aprobada', color: '#3b82f6' },
+  EJECUTADA: { txt: 'Ejecutada', color: '#10b981' }, RECHAZADA: { txt: 'Rechazada', color: '#ef4444' }
+};
+const PESTANAS_SOL = [
+  { k: 'ABIERTAS', txt: 'Abiertas', estados: ['PENDIENTE', 'APROBADA'], color: '#1b3c5e' },
+  { k: 'PENDIENTE', txt: 'Pendientes', estados: ['PENDIENTE'], color: '#f59e0b' },
+  { k: 'APROBADA', txt: 'Aprobadas', estados: ['APROBADA'], color: '#3b82f6' },
+  { k: 'EJECUTADA', txt: 'Ejecutadas', estados: ['EJECUTADA'], color: '#10b981' },
+  { k: 'RECHAZADA', txt: 'Rechazadas', estados: ['RECHAZADA'], color: '#ef4444' },
+  { k: 'TODAS', txt: 'Todas', estados: null, color: '#94a3b8' }
+];
+const TIPO_SOL = { ALTA: 'Usuario nuevo', CAMBIO: 'Edición', BAJA: 'Baja' };
+let SOL_TAB = 'ABIERTAS';
+
+function elegirTab(k) { SOL_TAB = k; renderSolicitudes(); }
+
+function filaSol(s) {
+  const d = datosSol(s);
+  const est = ESTADOS_SOL[s.estado] || { txt: s.estado, color: '#94a3b8' };
+  const aprobo = s.aprobado_por ? (nombreCorto(s.aprobado_nombre) || s.aprobado_por)
+    : (['APROBADA', 'EJECUTADA'].includes(s.estado) && s.resuelto_por ? (nombreCorto(s.resuelto_nombre) || s.resuelto_por) : '');
+  let nota = '';
+  if (s.estado === 'EJECUTADA') {
+    nota = s.creado_usuario
+      ? `<div class="sl-nota ok">Creado como <b>${esc(s.creado_usuario)}</b><br>${esc(fechaCorta(s.resuelto_en))}</div>`
+      : `<div class="sl-nota ok">${esc(fechaCorta(s.resuelto_en))}</div>`;
+  } else if (s.estado === 'RECHAZADA' && s.comentario_admin) {
+    nota = `<div class="sl-nota no">“${esc(s.comentario_admin)}”</div>`;
+  }
+  return `<div class="sl-cols sl-row" style="--c:${est.color}">
+    <div><div class="sl-id">#${s.id}</div><span class="rep-st ${esc(s.tipo)}">${TIPO_SOL[s.tipo] || esc(s.tipo)}</span></div>
+    <div class="sl-fecha">${esc(fechaCorta(s.creado_en))}</div>
+    <div class="sl-per"><div>${personaSol(s, d)}</div></div>
+    <div>${pedidoSol(s, d, true)}</div>
+    <div class="sl-quien" data-lbl="Solicitado por" title="${esc(s.solicitante_nombre || '')}">${esc(nombreCorto(s.solicitante_nombre) || s.solicitante)}</div>
+    <div class="sl-quien" data-lbl="Aprobado por">${aprobo ? esc(aprobo) : '<span class="sl-vacio">—</span>'}</div>
+    <div class="sl-est"><span class="sl-chip" style="--c:${est.color}">${est.txt}</span>${nota}</div>
+    ${SES.isAdmin ? `<div class="sl-acc">${accionesSolicitud(s)}</div>` : ''}
+  </div>`;
+}
+
+function renderSolicitudes() {
+  const tipo = document.getElementById('f-sol-tipo').value;
+  const camp = parseInt(document.getElementById('f-sol-camp').value, 10) || null;
+  const q = sinTildes(document.getElementById('f-sol-buscar').value).toLowerCase().trim();
+  const base = SOLICITUDES.filter(s => {
+    if (camp && s.subsidiary_id !== camp) return false;
+    if (tipo && s.tipo !== tipo) return false;
+    if (!q) return true;
+    const d = datosSol(s);
+    return sinTildes(`${s.user_nombre} ${s.user_identificacion} ${d.nombres || ''} ${d.apellidos || ''} ${d.identificacion || ''} ${s.solicitante_nombre} ${s.solicitante} #${s.id}`).toLowerCase().includes(q);
+  });
+
+  const pend = SOLICITUDES.filter(s => s.estado === 'PENDIENTE').length;
+  const cnt = document.getElementById('cnt-pend');
+  cnt.textContent = pend; cnt.style.display = pend ? 'inline-flex' : 'none';
+
+  const deTab = t => base.filter(s => !t.estados || t.estados.includes(s.estado));
+  document.getElementById('sl-tabs').innerHTML = PESTANAS_SOL.map(t =>
+    `<button class="sl-tab ${SOL_TAB === t.k ? 'on' : ''}" style="--c:${t.color}" onclick="elegirTab('${t.k}')"><span class="dot"></span>${t.txt}<span class="n">${deTab(t).length}</span></button>`).join('');
+
+  const tab = PESTANAS_SOL.find(t => t.k === SOL_TAB) || PESTANAS_SOL[0];
+  // Abiertas / pendientes / aprobadas: la mas antigua primero (orden de atencion); el resto, la mas reciente primero
+  const antiguas = ['ABIERTAS', 'PENDIENTE', 'APROBADA'].includes(tab.k);
+  const lista = deTab(tab).sort((a, b) => antiguas ? a.id - b.id : b.id - a.id);
+
+  const cont = document.getElementById('tbl-solicitudes');
+  cont.classList.toggle('sl-solic', !SES.isAdmin);
+  if (!lista.length) { cont.innerHTML = `<div class="sl-vacia">No hay solicitudes ${tab.k === 'TODAS' ? '' : tab.txt.toLowerCase()} con esos filtros.</div>`; return; }
+  cont.innerHTML = `<div class="sl-cols sl-head"><span>Solicitud</span><span>Fecha</span><span>Persona</span><span>Qué se pide</span><span>Solicitado por</span><span>Aprobado por</span><span>Estado</span>${SES.isAdmin ? '<span>Acciones</span>' : ''}</div>` +
+    lista.map(filaSol).join('');
+}
+
+// Solo administradores: aprobar / rechazar / marcar ejecutada
+function accionesSolicitud(s) {
+  if (SES.isAdmin) {
+    if (s.estado === 'PENDIENTE') return `
+      <button class="rep-btn rep-btn-ok" onclick="abrirEstado(${s.id},'APROBADA')">Aprobar</button>
+      <button class="rep-btn rep-btn-x" onclick="abrirEstado(${s.id},'RECHAZADA')">Rechazar</button>`;
+    // Una vez aprobada ya no se puede rechazar: solo queda ejecutarla
+    if (s.estado === 'APROBADA') return `
+      <button class="rep-btn rep-btn-p" onclick="abrirEstado(${s.id},'EJECUTADA')">Marcar ejecutada</button>`;
+    return '';
+  }
+  return '';
+}
+
+function abrirEstado(id, estado) {
+  const s = SOLICITUDES.find(x => x.id === id);
+  resCtx = { id, estado };
+  document.getElementById('mres-titulo').textContent = { APROBADA: 'Aprobar', RECHAZADA: 'Rechazar', EJECUTADA: 'Marcar como ejecutada', ANULADA: 'Anular' }[estado] + ` solicitud #${id}`;
+  document.getElementById('mres-sub').textContent = `${({ ALTA: 'Usuario nuevo', CAMBIO: 'Edición', BAJA: 'Baja' })[s.tipo] || s.tipo} · ${s.subsidiary_nombre} · pedida por ${s.solicitante_nombre || s.solicitante}`;
+  const recordatorio = estado === 'EJECUTADA'
+    ? '<div class="md-warn"><b>Confirma que ya hiciste el cambio en AP1 → Seguridad → Usuarios.</b></div>' : '';
+  document.getElementById('mres-info').innerHTML = `${detalleSolicitud(s)}${s.motivo ? `<div class="sol-mot">“${esc(s.motivo)}”</div>` : ''}${recordatorio}`;
+  document.getElementById('mres-label').textContent = estado === 'RECHAZADA' ? 'Motivo del rechazo *' : 'Comentario (opcional)';
+  document.getElementById('mres-comentario').value = '';
+  document.getElementById('mres-error').textContent = '';
+  document.getElementById('mres-ok').className = 'rep-btn ' + ({ APROBADA: 'rep-btn-ok', RECHAZADA: 'rep-btn-x', EJECUTADA: 'rep-btn-p', ANULADA: '' }[estado]);
+  document.getElementById('modal-res').style.display = 'flex';
+}
+
+async function confirmarEstado() {
+  const btn = document.getElementById('mres-ok');
+  btn.disabled = true;
+  try {
+    await api(`/d1/usuarios/solicitudes/${resCtx.id}/estado`, {
+      method: 'POST', body: JSON.stringify({ estado: resCtx.estado, comentario: document.getElementById('mres-comentario').value })
+    });
+    cerrarModal('modal-res');
+    toast(`Solicitud #${resCtx.id}: ${resCtx.estado}`);
+    cargarSolicitudes();
+  } catch (e) {
+    document.getElementById('mres-error').textContent = e.message;
+  } finally { btn.disabled = false; }
+}
+
+// ── Administradores ─────────────────────────────────────
+async function cargarAdmins() {
+  const cont = document.getElementById('tbl-admins');
+  cont.innerHTML = LOADING;
+  try {
+    const j = await api('/d1/usuarios/admins');
+    cont.innerHTML = `<table class="ap-tbl"><thead><tr><th>Usuario</th><th>Nombre</th><th>Agregado por</th><th>Acciones</th></tr></thead><tbody>${
+      j.data.map(a => `<tr><td><b>${esc(a.username)}</b></td><td>${esc(a.nombre)}</td><td class="c sub">${esc(a.agregado_por)} · ${fmtFecha(a.creado_en)}</td>
+        <td><div class="acc">${a.username === SES.usuario.username ? '<span class="sub">Tú</span>' : `<button class="rep-btn rep-btn-sm rep-btn-x" onclick="quitarAdmin('${esc(a.username)}')">Quitar</button>`}</div></td></tr>`).join('')
+    }</tbody></table>`;
+  } catch (e) {
+    cont.innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+  }
+}
+
+async function agregarAdmin() {
+  const inp = document.getElementById('adm-nuevo');
+  const username = inp.value.trim();
+  if (!username) return;
+  try {
+    await api('/d1/usuarios/admins', { method: 'POST', body: JSON.stringify({ username }) });
+    inp.value = '';
+    toast('Administrador agregado');
+    cargarAdmins();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function quitarAdmin(username) {
+  if (!confirm(`¿Quitar a ${username} como administrador?`)) return;
+  try {
+    await api('/d1/usuarios/admins?username=' + encodeURIComponent(username), { method: 'DELETE' });
+    toast('Administrador quitado');
+    cargarAdmins();
+  } catch (e) { toast(e.message, true); }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { cerrarModal('modal-sol'); cerrarModal('modal-res'); cerrarModal('modal-bm'); }
+});
+
+restaurarSesion();
+</script>
+</body>
+</html>
