@@ -493,16 +493,18 @@
         <div class="md-b" style="font-size:13px;line-height:1.7;color:#1f2f44">
             <b>Instalarlo (una sola vez)</b>
             <ol style="padding-left:20px;margin:4px 0 12px">
-                <li>Muestra la barra de favoritos con <b>Ctrl + Shift + B</b>.</li>
+                <li>Muestra la barra de favoritos con <b class="k-barra">Ctrl + Shift + B</b>.</li>
                 <li>Arrastra este botón a la barra:
                     <a id="bm-ap1-2" class="rep-btn rep-btn-sm" style="text-decoration:none;display:inline-flex" href="#" onclick="event.preventDefault()">Pegar en AP1</a></li>
-                <li>Si no se deja arrastrar: clic derecho en la barra → <b>Agregar página</b> (o <i>Agregar favorito</i>), nombre <b>Pegar en AP1</b>, y en la dirección pega el código de
+                <li class="solo-pc">Si no se deja arrastrar: clic derecho en la barra → <b>Agregar página</b> (o <i>Agregar favorito</i>), nombre <b>Pegar en AP1</b>, y en la dirección pega el código de
+                    <button class="rep-btn rep-btn-sm" onclick="copiarCodigoFavorito(this)">Copiar código</button></li>
+                <li class="solo-mac">Si no se deja arrastrar: en Safari, <b>Marcadores → Añadir marcador</b> a cualquier página, luego clic derecho sobre él → <b>Editar dirección</b>; en Chrome/Edge, clic derecho en la barra → <b>Añadir página</b>. Nombre <b>Pegar en AP1</b> y en la dirección pega el código de
                     <button class="rep-btn rep-btn-sm" onclick="copiarCodigoFavorito(this)">Copiar código</button></li>
             </ol>
             <b>Usarlo</b>
             <ol style="padding-left:20px;margin:4px 0 0">
                 <li>En la solicitud, pulsa el ícono de copiar junto al nombre.</li>
-                <li>En AP1 → Seguridad → crear usuario, pulsa el favorito <b>Pegar en AP1</b> (no Ctrl+V).</li>
+                <li>En AP1 → Seguridad → crear usuario, pulsa el favorito <b>Pegar en AP1</b> (no <span class="k-pegar">Ctrl+V</span>).</li>
                 <li>Elige Departamento y Cargo en sus listas y guarda.</li>
             </ol>
         </div>
@@ -1057,7 +1059,7 @@ async function pegarEnAp1() {
   const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
   let texto = '';
   try { texto = await navigator.clipboard.readText(); } catch (e) {}
-  if (!/identificaci/i.test(texto)) texto = prompt('Pega aquí (Ctrl+V) los datos copiados en Control de Usuarios:') || '';
+  if (!/identificaci/i.test(texto)) texto = prompt('Pega aquí (' + (/Mac/i.test(navigator.platform) ? '⌘V' : 'Ctrl+V') + ') los datos copiados en Control de Usuarios:') || '';
   if (!texto) return;
   const d = {};
   texto.split(/\r?\n/).forEach(l => { const i = l.indexOf(':'); if (i > 0) d[norm(l.slice(0, i))] = l.slice(i + 1).trim(); });
@@ -1081,7 +1083,16 @@ async function pegarEnAp1() {
 }
 
 function codigoFavorito() { return 'javascript:(' + encodeURIComponent(pegarEnAp1.toString()) + ')();void 0'; }
-function abrirAyudaFavorito() { document.getElementById('modal-bm').style.display = 'flex'; }
+// En Mac los atajos son con ⌘ y en Safari el favorito se agrega distinto
+const ES_MAC = /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent);
+function abrirAyudaFavorito() {
+  const m = document.getElementById('modal-bm');
+  m.querySelector('.k-barra').textContent = ES_MAC ? '⌘ Cmd + Shift + B' : 'Ctrl + Shift + B';
+  m.querySelector('.k-pegar').textContent = ES_MAC ? '⌘V' : 'Ctrl+V';
+  m.querySelectorAll('.solo-mac').forEach(x => x.style.display = ES_MAC ? '' : 'none');
+  m.querySelectorAll('.solo-pc').forEach(x => x.style.display = ES_MAC ? 'none' : '');
+  m.style.display = 'flex';
+}
 async function copiarCodigoFavorito(btn) {
   await alPortapapeles(codigoFavorito());
   btn.textContent = 'Código copiado';
@@ -1104,7 +1115,7 @@ async function copiar(btn) {
   await alPortapapeles(v);
   btn.innerHTML = ICONO_OK; btn.classList.add('ok');
   setTimeout(() => { btn.innerHTML = ICONO_COPIAR; btn.classList.remove('ok'); }, 1200);
-  toast('Datos copiados. No uses Ctrl+V: en el formulario de AP1 pulsa el favorito "Pegar en AP1".');
+  toast(`Datos copiados. No uses ${ES_MAC ? '⌘V' : 'Ctrl+V'}: en el formulario de AP1 pulsa el favorito "Pegar en AP1".`);
 }
 
 // "AP1 Balanceado · ALIMENTADOR" -> { app, rol }; los nombres antiguos (solo el rol) son de AP1 Balanceado
