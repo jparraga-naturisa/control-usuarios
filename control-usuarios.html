@@ -220,8 +220,14 @@
     .sl-tab .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, #94a3b8); }
     .sl-tab.on { background: var(--ap-navy); border-color: var(--ap-navy); color: #fff; }
     .sl-tab.on .n { background: rgba(255,255,255,.2); color: #fff; }
-    .sl-cols { display: grid; grid-template-columns: 92px 96px minmax(300px, 1.6fr) minmax(240px, 1.3fr) minmax(130px, .7fr) minmax(130px, .7fr) 170px 180px; gap: 0 18px; align-items: center; }
-    .sl-solic .sl-cols { grid-template-columns: 92px 96px minmax(300px, 1.6fr) minmax(240px, 1.3fr) minmax(130px, .7fr) minmax(130px, .7fr) 170px; }
+    .sl-cols { display: grid; grid-template-columns: 80px 86px minmax(210px, 1.6fr) minmax(195px, 1.2fr) minmax(92px, .65fr) minmax(92px, .65fr) 105px 90px 92px 130px; gap: 0 12px; align-items: center; }
+    .sl-solic .sl-cols { grid-template-columns: 80px 86px minmax(210px, 1.6fr) minmax(195px, 1.2fr) minmax(92px, .65fr) minmax(92px, .65fr) 105px 90px 92px; }
+    /* Pantallas angostas: desplazar de lado en lugar de cortar columnas */
+    #tbl-solicitudes { overflow-x: auto; }
+    #tbl-solicitudes > .sl-cols { min-width: 1190px; }
+    .sl-solic > .sl-cols { min-width: 1050px !important; }
+    .sl-row .sol-k { min-width: 64px; font-size: 10px; }
+    .sl-usr { font-size: 13px; font-weight: 600; color: #166534; overflow-wrap: anywhere; }
     .sl-head { padding: 0 18px 8px 22px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .5px; }
     .sl-row { background: #fff; border-radius: 10px; padding: 14px 18px; margin-bottom: 8px; border-left: 4px solid var(--c, #cbd5e1); box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 0 0 1px #e3e8ee; transition: box-shadow .15s; }
     .sl-row:hover { box-shadow: 0 6px 18px rgba(15,23,42,.09), 0 0 0 1px #cfd8e3; }
@@ -241,8 +247,9 @@
     .sl-vacia { background: #fff; border: 1.5px dashed #cfd8e3; border-radius: 10px; padding: 40px; text-align: center; color: #8391a2; font-size: 13px; }
     @media (max-width: 1100px) {
       .sl-cols, .sl-solic .sl-cols { grid-template-columns: 1fr; gap: 8px; }
+      #tbl-solicitudes > .sl-cols, .sl-solic > .sl-cols { min-width: 0 !important; }
       .sl-head { display: none; }
-      .sl-quien::before { content: attr(data-lbl) ': '; color: #64748b; font-weight: 400; }
+      .sl-quien::before, .sl-usr::before { content: attr(data-lbl) ': '; color: #64748b; font-weight: 400; }
     }
     /* Solicitudes: filas tipo tarjeta con franja de color por estado */
     .sol-cols { display: grid; grid-template-columns: 112px 104px minmax(270px, 1.55fr) minmax(240px, 1.4fr) minmax(140px, .8fr) minmax(140px, .8fr) 150px 210px; gap: 0 18px; align-items: center; }
@@ -1186,11 +1193,7 @@ function filaSol(s) {
   const aprobo = s.aprobado_por ? (nombreCorto(s.aprobado_nombre) || s.aprobado_por)
     : (['APROBADA', 'EJECUTADA'].includes(s.estado) && s.resuelto_por ? (nombreCorto(s.resuelto_nombre) || s.resuelto_por) : '');
   let nota = '';
-  if (s.estado === 'EJECUTADA') {
-    nota = s.creado_usuario
-      ? `<div class="sl-nota ok">Creado como <b>${esc(s.creado_usuario)}</b><br>${esc(fechaCorta(s.resuelto_en))}</div>`
-      : `<div class="sl-nota ok">${esc(fechaCorta(s.resuelto_en))}</div>`;
-  } else if (s.estado === 'RECHAZADA' && s.comentario_admin) {
+  if (s.estado === 'RECHAZADA' && s.comentario_admin) {
     nota = `<div class="sl-nota no">“${esc(s.comentario_admin)}”</div>`;
   }
   return `<div class="sl-cols sl-row" style="--c:${est.color}">
@@ -1201,6 +1204,8 @@ function filaSol(s) {
     <div class="sl-quien" data-lbl="Solicitado por" title="${esc(s.solicitante_nombre || '')}">${esc(nombreCorto(s.solicitante_nombre) || s.solicitante)}</div>
     <div class="sl-quien" data-lbl="Aprobado por">${aprobo ? esc(aprobo) : '<span class="sl-vacio">—</span>'}</div>
     <div class="sl-est"><span class="sl-chip" style="--c:${est.color}">${est.txt}</span>${nota}</div>
+    <div class="sl-usr" data-lbl="Usuario creado">${s.estado === 'EJECUTADA' && s.creado_usuario ? esc(s.creado_usuario) : '<span class="sl-vacio">—</span>'}</div>
+    <div class="sl-quien" data-lbl="Fecha de creación">${s.estado === 'EJECUTADA' ? esc(fechaCorta(s.resuelto_en)) : '<span class="sl-vacio">—</span>'}</div>
     ${SES.isAdmin ? `<div class="sl-acc">${accionesSolicitud(s)}</div>` : ''}
   </div>`;
 }
@@ -1233,7 +1238,7 @@ function renderSolicitudes() {
   const cont = document.getElementById('tbl-solicitudes');
   cont.classList.toggle('sl-solic', !SES.isAdmin);
   if (!lista.length) { cont.innerHTML = `<div class="sl-vacia">No hay solicitudes ${tab.k === 'TODAS' ? '' : tab.txt.toLowerCase()} con esos filtros.</div>`; return; }
-  cont.innerHTML = `<div class="sl-cols sl-head"><span>Solicitud</span><span>Fecha</span><span>Persona</span><span>Qué se pide</span><span>Solicitado por</span><span>Aprobado por</span><span>Estado</span>${SES.isAdmin ? '<span>Acciones</span>' : ''}</div>` +
+  cont.innerHTML = `<div class="sl-cols sl-head"><span>Solicitud</span><span>Fecha</span><span>Persona</span><span>Qué se pide</span><span>Solicitado por</span><span>Aprobado por</span><span>Estado</span><span>Usuario creado</span><span>Fecha de creación</span>${SES.isAdmin ? '<span>Acciones</span>' : ''}</div>` +
     lista.map(filaSol).join('');
 }
 
