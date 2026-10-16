@@ -873,7 +873,10 @@ async function enviarSolicitud() {
     const dif = difEditar();
     if (!dif.total && !v('s-cargo')) return err('No hay cambios: marca o desmarca alguna sucursal o rol.');
     body.tipo = 'CAMBIO';
-    body.subsidiaryId = solCtx.sid;
+    // Si el usuario aun no esta en ningun campamento de quien pide (ej. no tiene sucursal), la solicitud
+    // queda en la primera sucursal que se le agrega
+    body.subsidiaryId = solCtx.sinCampamento && dif.sucAdd.length ? dif.sucAdd[0] : solCtx.sid;
+    if (!body.subsidiaryId) return err('Agrega al menos una de tus sucursales: este usuario no está en ninguno de tus campamentos.');
     body.userId = u.idUser;
     body.datos = { sucursalesAgregar: dif.sucAdd, sucursalesQuitar: dif.sucDel, rolesAgregarIds: dif.rolAdd, rolesQuitarIds: dif.rolDel,
       cargoId: v('s-cargo') ? parseInt(v('s-cargo'), 10) : null };
@@ -1039,8 +1042,8 @@ function abrirEditar(i, origen) {
   const actualesRol = new Set(cu.aplicaciones.flatMap(a => a.roleIds || []));
   const fuera = cu.sucursales.filter(x => !propias.some(p => p.id === x.id));
   // La solicitud se registra en un campamento del usuario que quien pide maneja
-  const sid = cu.sucursalesGestionables[0] || (SES.isAdmin ? (cu.sucursales[0] || propias[0] || {}).id : null);
-  solCtx = { tipo: 'EDITAR', u, origen: origen || 'consulta', sid, actualesSuc, actualesRol };
+  const sid = cu.sucursalesGestionables[0] || (SES.isAdmin ? (cu.sucursales[0] || {}).id : null) || null;
+  solCtx = { tipo: 'EDITAR', u, origen: origen || 'consulta', sid, sinCampamento: !sid, actualesSuc, actualesRol };
   // Roles que tiene hoy pero ya no estan activos en el catalogo: se muestran para poder quitarlos
   const enCatalogo = new Set((SES.rolesPorApp || []).flatMap(a => a.roles.map(r => r.id)));
   const huerfanos = cu.aplicaciones.flatMap(a => (a.roleIds || []).map((id, k) => ({ id, txt: `${a.nombre} · ${a.roles[k]}` }))).filter(x => !enCatalogo.has(x.id));
