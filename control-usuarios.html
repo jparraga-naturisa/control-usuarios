@@ -241,6 +241,8 @@
       .sl-row .sol-k { min-width: 60px; font-size: 10px; }
       .sl-row .sol-lin { flex-wrap: nowrap; }
       .sl-row .sol-lin .ch { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+      .sl-row .sol-lin.sol-wrap { flex-wrap: wrap; }
+      .sl-row .sol-lin.sol-wrap .ch { overflow: visible; }
       .sl-row .sol-nom { font-size: 14px; }
       .sl-row .per-lin { font-size: 12.5px; }
       .sl-row .per-k { flex-basis: 90px; }
@@ -301,6 +303,9 @@
     .ch.suc { background: #e0f2fe; color: #075985; }
     .ch.mas { background: #dcfce7; color: #166534; }
     .ch.menos { background: #fee2e2; color: #991b1b; text-decoration: line-through; }
+    /* Edicion: lo que se quita (la etiqueta "Quita ..." ya lo dice, sin tachar) */
+    .ch.quita { background: #fee2e2; color: #991b1b; }
+    .flecha { color: #64748b; font-weight: 700; margin: 0 2px; }
     .sol-mot { font-size: 12px; color: #475569; font-style: italic; margin-top: 4px; }
     .sol-est .sol-sub { margin-top: 4px; }
     .sol-acc { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
@@ -1136,11 +1141,22 @@ function personaSol(s, d) {
   const campos = alta
     ? [['Identificación', d.identificacion], ['Nombres', d.nombres], ['Apellidos', d.apellidos], ['Teléfono', d.telefono],
        ['Correo electrónico', d.email], ['Departamento', depDeNombreCargo(d.cargoNombre) || d.departamentoNombre], ['Cargo', d.cargoNombre]]
-    : [['Identificación', s.user_identificacion], ['Cargo', d.cargoActual]];
+    : (ua => [['Identificación', s.user_identificacion], ['Teléfono', ua.telefono], ['Correo electrónico', ua.email],
+        // Departamento y Cargo: siempre de RRHH; solo si no esta en RRHH (externos) se usa lo de AP1
+        ['Departamento', (ua.rrhh && ua.rrhh.departamento) || ua.departamento || d.departamentoActual || 'Sin departamento'],
+        ['Cargo', (ua.rrhh && ua.rrhh.cargo) || ua.cargo || d.cargoActual || 'Sin cargo']])(s.usuario_actual || {});
   const conValor = campos.filter(([, v]) => v);
   // Para el favorito "Pegar en AP1": roles "Aplicación · Rol" y sucursales, separados por " | " (no se muestran aqui)
-  const extra = alta ? [['Roles', (d.rolesNombres || (d.rol ? ['AP1 Balanceado · ' + d.rol] : [])).join(' | ')], ['Sucursales', (d.sucursalesNombres || []).join(' | ')]] : [];
-  const texto = conValor.concat(extra.filter(([, v]) => v)).map(([k, v]) => `${k}: ${v}`).join('\n');
+  const conApp = l => (l || []).map(x => / · /.test(x) ? x : 'AP1 Balanceado · ' + x);
+  const extra = alta ? [['Roles', (d.rolesNombres || (d.rol ? ['AP1 Balanceado · ' + d.rol] : [])).join(' | ')], ['Sucursales', (d.sucursalesNombres || []).join(' | ')]]
+    : s.tipo === 'CAMBIO' ? [['Departamento', d.cargoNombre ? depDeNombreCargo(d.cargoNombre) || d.departamentoNombre : ''], ['Cargo nuevo', d.cargoNombre],
+        ['Roles agregar', (d.rolesAgregarNombres && d.rolesAgregarNombres.length ? d.rolesAgregarNombres : conApp([...(d.rolesAgregar || []), ...(d.rol ? [d.rol] : [])])).join(' | ')],
+        ['Roles quitar', (d.rolesQuitarNombres && d.rolesQuitarNombres.length ? d.rolesQuitarNombres : conApp(d.rolesQuitar)).join(' | ')],
+        ['Sucursales agregar', (d.sucursalesAgregarNombres || []).join(' | ')], ['Sucursales quitar', (d.sucursalesQuitarNombres || []).join(' | ')]]
+    : [];
+  // "Tipo" le dice al favorito si va en la pantalla de Nuevo usuario o en la de editar (lapiz)
+  const tipoTxt = { ALTA: 'Usuario nuevo', CAMBIO: 'Cambio de usuario', BAJA: 'Baja de usuario' }[s.tipo] || s.tipo;
+  const texto = [['Tipo', tipoTxt]].concat(conValor.filter(([k]) => alta || k === 'Identificación'), extra.filter(([, v]) => v)).map(([k, v]) => `${k}: ${v}`).join('\n');
   const etiqueta = k => k === 'Correo electrónico' ? 'Correo' : k;
   return `<div class="per-top"><span class="sol-nom">${esc(nombre || '—')}</span>` +
     `<button class="cp" title="Copiar los datos para pegarlos en AP1" data-v="${esc(texto)}" onclick="copiar(this)">${ICONO_COPIAR}</button></div>` +
@@ -1156,7 +1172,9 @@ const ICONO_OK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" st
 // por eso no usa nada de esta pantalla. Lee el portapapeles ("Etiqueta: valor" por linea) y:
 //   1) escribe los campos de texto, enciende "Usar identificación como contraseña" y apaga "Forzar cambio de contraseña", 2) elige Departamento y Cargo, 3) por cada aplicacion la elige en
 //   "Filtrar por aplicación" y pasa sus roles a Asignados, 4) pasa las sucursales a Asignados.
-// No pulsa Guardar: el administrador revisa y guarda.
+// En un CAMBIO (pantalla de editar con el lapiz) solo toca Departamento/Cargo, roles y sucursales
+// (agregar y quitar); no toca nombres ni contraseña y se detiene si la cédula del formulario no coincide.
+// No pulsa Guardar/Actualizar: el administrador revisa y guarda.
 async function pegarEnAp1() {
   const norm = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\*/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
   const esperar = ms => new Promise(r => setTimeout(r, ms));
@@ -1169,11 +1187,26 @@ async function pegarEnAp1() {
   texto.split(/\r?\n/).forEach(l => { const i = l.indexOf(':'); if (i > 0) d[norm(l.slice(0, i))] = l.slice(i + 1).trim(); });
   const ok = [], faltan = [];
 
-  // 1) Campos de texto (React: setter nativo + evento input)
+  // Pantalla: "Nuevo usuario" o la de editar (lapiz), que es el mismo formulario con "Usuario" y el boton "Actualizar"
+  const editando = !!document.getElementById('username') || [...document.querySelectorAll('button')].some(b => norm(b.textContent) === 'actualizar');
+  const tipo = norm(d.tipo);
+  if (tipo.startsWith('baja')) { alert('Es una BAJA: en Seguridad → Usuarios desactiva o elimina al usuario con el botón rojo. El favorito no la hace.'); return; }
+  if (tipo.startsWith('cambio') && !editando) { alert('Estos datos son de un CAMBIO de usuario.\n\nEn Seguridad → Usuarios busca la cédula ' + (d.identificacion || '') + ', ábrelo con el lápiz (Editar) y vuelve a pulsar el favorito.'); return; }
+  if (!tipo.startsWith('cambio') && editando) { alert('Estos datos son de un usuario NUEVO, pero estás editando un usuario existente.\n\nEn Seguridad → Usuarios pulsa "Nuevo" y vuelve a pulsar el favorito.'); return; }
+  if (editando) {
+    const idf = document.getElementById('identificationNumber');
+    if (idf && d.identificacion && norm(idf.value) !== norm(d.identificacion)) {
+      alert('Este formulario es de la cédula ' + idf.value + ', pero los datos copiados son de ' + d.identificacion + '.\n\nAbre con el lápiz el usuario correcto. No se cambió nada.');
+      return;
+    }
+  }
+  d.cargo = d['cargo nuevo'] || d.cargo;
+
+  // 1) Campos de texto (React: setter nativo + evento input). Al editar no se tocan (los datos ya estan)
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
   const ids = { 'identificacion': 'identificationNumber', 'nombres': 'names', 'apellidos': 'lastNames', 'telefono': 'phoneNumber', 'correo electronico': 'email' };
   for (const k of Object.keys(ids)) {
-    if (!d[k]) continue;
+    if (!d[k] || editando) continue;
     let inp = document.getElementById(ids[k]);
     if (!inp) {
       const et = [...document.querySelectorAll('label')].filter(e => norm(e.textContent) === k).pop();
@@ -1203,7 +1236,8 @@ async function pegarEnAp1() {
       }
     }
   }
-  await ajustarInterruptores();
+  // Al editar no se tocan las contraseñas
+  if (!editando) await ajustarInterruptores();
 
   // 2) Desplegables PrimeReact: abrir, elegir la opcion por texto
   // Cerrar el desplegable que quedo abierto (si no, el siguiente desplegable leeria sus opciones)
@@ -1247,12 +1281,27 @@ async function pegarEnAp1() {
   const lista = palabra => listas.find(pl => (pl.querySelector('.p-picklist-filter-input') || {}).placeholder && norm(pl.querySelector('.p-picklist-filter-input').placeholder).includes(palabra));
   const plRoles = lista('roles'), plSuc = lista('sucursal');
   // Busca el item por su texto (los items muestran un titulo chico + el nombre en negrita)
-  const buscar = (ul, nombre, contexto) => {
+  // estricto: solo nombre exacto (para quitar, no se arriesga a sacar otro parecido)
+  const buscar = (ul, nombre, contexto, estricto) => {
     const items = [...ul.querySelectorAll('li')];
     const exacto = items.filter(li => [...li.querySelectorAll('*')].some(e => !e.children.length && norm(e.textContent) === norm(nombre)) || norm(li.textContent) === norm(nombre));
     const conCtx = contexto ? exacto.filter(li => norm(li.textContent).includes(norm(contexto))) : exacto;
+    if (estricto) return conCtx[0] || null;
     return conCtx[0] || exacto[0] || items.find(li => norm(li.textContent).includes(norm(nombre))) || null;
   };
+  // Asignados -> Disponibles (tercer boton "<"). Devuelve 'ya' si no lo tenia asignado.
+  async function sacar(pl, nombre, contexto) {
+    if (!pl) return false;
+    const li = buscar(pl.querySelector('.p-picklist-target'), nombre, contexto, true);
+    if (!li) return 'ya';
+    li.click();
+    await esperar(150);
+    const btn = pl.querySelectorAll('.p-picklist-transfer-buttons button, .p-picklist-buttons button')[2];
+    if (!btn) return false;
+    btn.click();
+    await hasta(() => !buscar(pl.querySelector('.p-picklist-target'), nombre, contexto, true), 2000);
+    return !buscar(pl.querySelector('.p-picklist-target'), nombre, contexto, true);
+  }
   async function pasar(pl, nombre, contexto) {
     if (!pl) return false;
     if (buscar(pl.querySelector('.p-picklist-target'), nombre, contexto)) return true;   // ya asignado
@@ -1268,20 +1317,46 @@ async function pegarEnAp1() {
   }
 
   // Roles agrupados por aplicacion: "AP1 Balanceado · ALIMENTADOR | Portal · Key User"
+  // En un cambio vienen "Roles agregar" y "Roles quitar"; la lista de Asignados se filtra por la aplicacion elegida
   const porApp = {};
-  (d.roles || '').split('|').map(x => x.trim()).filter(Boolean).forEach(x => {
+  const lista2 = v => (v || '').split('|').map(x => x.trim()).filter(Boolean);
+  const agrupar = (v, que) => lista2(v).forEach(x => {
     const k = x.indexOf(' · '); const app = k > 0 ? x.slice(0, k).trim() : 'AP1 Balanceado'; const rol = k > 0 ? x.slice(k + 3).trim() : x;
-    (porApp[app] = porApp[app] || []).push(rol);
+    (porApp[app] = porApp[app] || { poner: [], quitar: [] })[que].push(rol);
   });
+  agrupar(d.roles || d['roles agregar'], 'poner');
+  agrupar(d['roles quitar'], 'quitar');
   for (const app of Object.keys(porApp)) {
-    if (!(await elegir('selectApp', app))) { porApp[app].forEach(r => faltan.push('rol: ' + app + ' · ' + r + ' (no se encontró la aplicación)')); continue; }
-    await hasta(() => plRoles && plRoles.querySelector('.p-picklist-source li'), 6000);
-    for (const rol of porApp[app]) ((await pasar(plRoles, rol, app)) ? ok : faltan).push('rol: ' + app + ' · ' + rol);
+    const { poner, quitar } = porApp[app];
+    if (!(await elegir('selectApp', app))) {
+      poner.forEach(r => faltan.push('rol: ' + app + ' · ' + r + ' (no se encontró la aplicación)'));
+      quitar.forEach(r => faltan.push('quitar rol: ' + app + ' · ' + r + ' (no se encontró la aplicación)'));
+      continue;
+    }
+    // Para agregar hay que esperar a que AP1 cargue los Disponibles de la aplicacion (al editar, Asignados ya trae los actuales)
+    await hasta(() => plRoles && plRoles.querySelector(poner.length ? '.p-picklist-source li' : '.p-picklist-source li, .p-picklist-target li'), 6000);
+    for (const rol of poner) ((await pasar(plRoles, rol, app)) ? ok : faltan).push('rol: ' + app + ' · ' + rol);
+    for (const rol of quitar) {
+      const r = await sacar(plRoles, rol, app);
+      if (r === 'ya') ok.push('quitar rol: ' + app + ' · ' + rol + ' (ya no lo tenía)');
+      else (r ? ok : faltan).push('quitar rol: ' + app + ' · ' + rol);
+    }
   }
   // Las sucursales disponibles dependen de las aplicaciones asignadas: esperar a que carguen
-  const sucs = (d.sucursales || '').split('|').map(x => x.trim()).filter(Boolean);
-  if (sucs.length) await hasta(() => plSuc && plSuc.querySelector('.p-picklist-source li, .p-picklist-target li'), 8000);
+  const sucs = lista2(d.sucursales || d['sucursales agregar']), sucsQuitar = lista2(d['sucursales quitar']);
+  if (sucs.length || sucsQuitar.length) await hasta(() => plSuc && plSuc.querySelector('.p-picklist-source li, .p-picklist-target li'), 8000);
   for (const suc of sucs) ((await pasar(plSuc, suc)) ? ok : faltan).push('sucursal: ' + suc);
+  for (const suc of sucsQuitar) {
+    const r = await sacar(plSuc, suc);
+    if (r === 'ya') ok.push('quitar sucursal: ' + suc + ' (ya no la tenía)');
+    else (r ? ok : faltan).push('quitar sucursal: ' + suc);
+  }
+
+  if (editando) {
+    alert('Listo: ' + ok.length + ' cambios cargados.' + (faltan.length ? '\n\nNo se pudo completar (revísalo a mano):\n- ' + faltan.join('\n- ') : '') +
+      '\n\nNo se tocaron nombres ni contraseña. Revisa el formulario y pulsa Actualizar.');
+    return;
+  }
 
   // Verificacion final de los interruptores (AP1 pudo cambiarlos mientras se cargaba lo demas)
   await esperar(400);
@@ -1357,14 +1432,18 @@ function pedidoSol(s, d, conMotivo) {
     h += lineasAppRol([{ nombres: roles }]);
     h += linea('Sucursal', chipsSuc(d.sucursalesNombres));
   } else if (s.tipo === 'CAMBIO') {
-    h += lineasAppRol([
-      { nombres: d.rolesAgregarNombres, clase: 'mas' }, { nombres: d.rolesQuitarNombres, clase: 'menos' },
-      { nombres: d.rolesAgregar, clase: 'mas' }, { nombres: d.rolesQuitar, clase: 'menos' },
-      { nombres: d.rol ? [d.rol] : [], clase: 'mas' }
-    ]);
-    h += linea('Sucursal', chipsSuc(d.sucursalesAgregarNombres, 'mas') + chipsSuc(d.sucursalesQuitarNombres, 'menos') +
-      (d.subsidiaryDestinoId ? chipsSuc([d.subsidiaryDestinoNombre || d.subsidiaryDestinoId], 'mas') : ''));
-    if (d.cargoId) h += linea('Cargo', `<span class="ch menos">${esc(d.cargoActual || 'Sin cargo')}</span><span class="ch mas">${esc(d.cargoNombre || d.cargoId)}</span>`);
+    // Cada cambio en su linea: "Agrega rol", "Quita rol", "Agrega sucursal", "Quita sucursal", "Cargo: antes → nuevo"
+    const agrega = [...(d.rolesAgregarNombres || []), ...(d.rolesAgregar || []), ...(d.rol ? [d.rol] : [])].map(parteRol);
+    const quita = [...(d.rolesQuitarNombres || []), ...(d.rolesQuitar || [])].map(parteRol);
+    const apps = [...new Set([...agrega, ...quita].map(x => x.app))];
+    const chipRol = (x, clase) => `<span class="ch ${clase}" title="${esc(x.app)}">${esc(x.rol)}${apps.length > 1 ? ` <span style="opacity:.6">(${esc(x.app)})</span>` : ''}</span>`;
+    h += linea('Aplicación', apps.map(a => `<span class="ch app">${esc(a)}</span>`).join(''));
+    h += linea('Agrega rol', agrega.map(x => chipRol(x, 'mas')).join(''));
+    h += linea('Quita rol', quita.map(x => chipRol(x, 'quita')).join(''));
+    const sucAdd = [...(d.sucursalesAgregarNombres || []), ...(d.subsidiaryDestinoId ? [d.subsidiaryDestinoNombre || d.subsidiaryDestinoId] : [])];
+    h += linea('Agrega sucursal', sucAdd.map(n => `<span class="ch mas">${esc(n)}</span>`).join(''));
+    h += linea('Quita sucursal', (d.sucursalesQuitarNombres || []).map(n => `<span class="ch quita">${esc(n)}</span>`).join(''));
+    if (d.cargoId) h += `<div class="sol-lin sol-wrap"><span class="sol-k">Cargo</span><span class="ch">${esc(d.cargoActual || 'Sin cargo')}</span><span class="flecha">→</span><span class="ch mas">${esc(d.cargoNombre || d.cargoId)}</span></div>`;
   } else {
     h += `<div class="sol-lin"><span class="ch menos" style="text-decoration:none">Dar de baja el usuario</span></div>`;
     h += lineasAppRol([{ nombres: d.rolesActuales }]);
@@ -1413,7 +1492,11 @@ function filaSol(s) {
     <div class="sl-quien" data-lbl="Solicitado por" title="${esc(s.solicitante_nombre || '')}">${esc(nombreCorto(s.solicitante_nombre) || s.solicitante)}</div>
     <div class="sl-quien" data-lbl="Aprobado por">${aprobo ? esc(aprobo) : '<span class="sl-vacio">—</span>'}</div>
     <div class="sl-est"><span class="sl-chip" style="--c:${est.color}">${est.txt}</span>${nota}</div>
-    <div class="sl-usr" data-lbl="Usuario creado">${s.estado === 'EJECUTADA' && s.creado_usuario ? esc(s.creado_usuario) : '<span class="sl-vacio">—</span>'}</div>
+    <div class="sl-usr" data-lbl="Usuario creado">${(() => {
+      // Alta: el usuario que se creo al ejecutar. Edicion o baja: el usuario de AP1 que ya existe
+      const usr = s.tipo === 'ALTA' ? (s.estado === 'EJECUTADA' ? s.creado_usuario : '') : (s.usuario_actual && s.usuario_actual.username) || s.creado_usuario;
+      return usr ? esc(usr) : '<span class="sl-vacio">—</span>';
+    })()}</div>
     <div class="sl-quien" data-lbl="Fecha de creación">${s.estado === 'EJECUTADA' ? esc(fechaCorta(s.resuelto_en)) : '<span class="sl-vacio">—</span>'}</div>
     ${SES.isAdmin ? `<div class="sl-acc">${accionesSolicitud(s)}</div>` : ''}
   </div>`;
