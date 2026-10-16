@@ -1140,11 +1140,13 @@ function datosSol(s) { try { return JSON.parse(s.datos || '{}'); } catch { retur
 // que es lo que lee el favorito "Pegar en AP1" para llenar el formulario de una vez.
 function personaSol(s, d) {
   const alta = s.tipo === 'ALTA';
-  const nombre = alta ? `${d.nombres || ''} ${d.apellidos || ''}`.trim() : s.user_nombre;
+  const nombre = alta ? `${d.nombres || ''} ${d.apellidos || ''}`.trim() : ((s.usuario_actual && s.usuario_actual.rrhh && s.usuario_actual.rrhh.nombre) || s.user_nombre);
   const campos = alta
     ? [['Identificación', d.identificacion], ['Nombres', d.nombres], ['Apellidos', d.apellidos], ['Teléfono', d.telefono],
        ['Correo electrónico', d.email], ['Departamento', depDeNombreCargo(d.cargoNombre) || d.departamentoNombre], ['Cargo', d.cargoNombre]]
-    : (ua => [['Identificación', s.user_identificacion], ['Teléfono', ua.telefono], ['Correo electrónico', ua.email],
+    // Edicion / baja: todos los datos de RRHH; lo de AP1 solo si la persona no esta en RRHH (ej. externos)
+    : (ua => [['Identificación', s.user_identificacion], ['Teléfono', (ua.rrhh && ua.rrhh.telefono) || ua.telefono || 'Sin teléfono'],
+        ['Correo electrónico', (ua.rrhh && ua.rrhh.email) || ua.email || 'Sin correo'],
         // Departamento y Cargo: siempre de RRHH; solo si no esta en RRHH (externos) se usa lo de AP1
         ['Departamento', (ua.rrhh && ua.rrhh.departamento) || ua.departamento || d.departamentoActual || 'Sin departamento'],
         ['Cargo', (ua.rrhh && ua.rrhh.cargo) || ua.cargo || d.cargoActual || 'Sin cargo']])(s.usuario_actual || {});
@@ -1159,7 +1161,10 @@ function personaSol(s, d) {
     : [];
   // "Tipo" le dice al favorito si va en la pantalla de Nuevo usuario o en la de editar (lapiz)
   const tipoTxt = { ALTA: 'Usuario nuevo', CAMBIO: 'Cambio de usuario', BAJA: 'Baja de usuario' }[s.tipo] || s.tipo;
-  const texto = [['Tipo', tipoTxt]].concat(conValor.filter(([k]) => alta || k === 'Identificación'), extra.filter(([, v]) => v)).map(([k, v]) => `${k}: ${v}`).join('\n');
+  // Edicion: tambien el teléfono (de RRHH) por si en AP1 esta vacio, que es obligatorio para actualizar
+  const ua = s.usuario_actual || {};
+  const telCambio = !alta ? ((ua.rrhh && ua.rrhh.telefono) || ua.telefono || '') : '';
+  const texto = [['Tipo', tipoTxt]].concat(conValor.filter(([k]) => alta || k === 'Identificación'), telCambio ? [['Teléfono', telCambio]] : [], extra.filter(([, v]) => v)).map(([k, v]) => `${k}: ${v}`).join('\n');
   const etiqueta = k => k === 'Correo electrónico' ? 'Correo' : k;
   return `<div class="per-top"><span class="sol-nom">${esc(nombre || '—')}</span>` +
     `<button class="cp" title="Copiar los datos para pegarlos en AP1" data-v="${esc(texto)}" onclick="copiar(this)">${ICONO_COPIAR}</button></div>` +
@@ -1209,7 +1214,8 @@ async function pegarEnAp1() {
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
   const ids = { 'identificacion': 'identificationNumber', 'nombres': 'names', 'apellidos': 'lastNames', 'telefono': 'phoneNumber', 'correo electronico': 'email' };
   for (const k of Object.keys(ids)) {
-    if (!d[k] || editando) continue;
+    // Al editar solo se llenan los campos que estan vacios (ej. teléfono obligatorio que falta en AP1)
+    if (!d[k] || (editando && (k === 'identificacion' || !document.getElementById(ids[k]) || document.getElementById(ids[k]).value.trim() || document.getElementById(ids[k]).disabled))) continue;
     let inp = document.getElementById(ids[k]);
     if (!inp) {
       const et = [...document.querySelectorAll('label')].filter(e => norm(e.textContent) === k).pop();
@@ -1347,6 +1353,14 @@ async function pegarEnAp1() {
   }
   // Las sucursales disponibles dependen de las aplicaciones asignadas: esperar a que carguen
   const sucs = lista2(d.sucursales || d['sucursales agregar']), sucsQuitar = lista2(d['sucursales quitar']);
+  // AP1 no deja mover sucursales sin una aplicación elegida en "Filtrar por aplicación"
+  // (pasa en una edición que solo cambia sucursales): elegir la del usuario
+  if ((sucs.length || sucsQuitar.length) && !Object.keys(porApp).length) {
+    const chipApp = document.querySelector('#asignedApp .p-multiselect-token-label, #asignedApp .p-multiselect-token');
+    const app = (chipApp && chipApp.textContent.trim()) || d.aplicacion || 'AP1 Balanceado';
+    if (!(await elegir('selectApp', app))) faltan.push('aplicación ' + app + ' en "Filtrar por aplicación" (elígela y pasa la sucursal a mano)');
+    await esperar(400);
+  }
   if (sucs.length || sucsQuitar.length) await hasta(() => plSuc && plSuc.querySelector('.p-picklist-source li, .p-picklist-target li'), 8000);
   for (const suc of sucs) ((await pasar(plSuc, suc)) ? ok : faltan).push('sucursal: ' + suc);
   for (const suc of sucsQuitar) {
@@ -1357,7 +1371,8 @@ async function pegarEnAp1() {
 
   if (editando) {
     alert('Listo: ' + ok.length + ' cambios cargados.' + (faltan.length ? '\n\nNo se pudo completar (revísalo a mano):\n- ' + faltan.join('\n- ') : '') +
-      '\n\nNo se tocaron nombres ni contraseña. Revisa el formulario y pulsa Actualizar.');
+      (ok.includes('telefono') ? '\n\nSe llenó el teléfono (estaba vacío) con el de RRHH.' : '') +
+      '\n\nNo se cambiaron los datos que ya tenía ni la contraseña. Revisa el formulario y pulsa Actualizar.');
     return;
   }
 
