@@ -212,10 +212,8 @@
     .apps-wrap { max-height: 260px; overflow-y: auto; padding-right: 2px; }
     .oculta { display: none !important; }
     /* Aviso de transportista: tambien se crea en Data Maestra */
-    .dm-aviso { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 3px 10px; border-radius: 12px; background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; font-size: 12px; font-weight: 600; }
+    .dm-aviso { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 3px 10px; border-radius: 12px; background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; font-size: 12px; font-weight: 600; }
     .dm-aviso.ok { background: #ecfdf3; border-color: #86efac; color: #166534; }
-    .dm-check { display: flex; gap: 10px; align-items: flex-start; margin-top: 10px; padding: 10px 12px; border: 1.5px solid #fdba74; background: #fff7ed; border-radius: 6px; font-size: 13px; color: #7c2d12; cursor: pointer; }
-    .dm-check input { width: 18px; height: 18px; margin-top: 1px; accent-color: #c2410c; flex-shrink: 0; cursor: pointer; }
     /* Lista de solicitudes: pestañas por estado + filas tipo tarjeta */
     .sl-area { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 12px 12px 20px; }
     .sl-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -240,7 +238,9 @@
     .sl-row .ch { font-size: 13px; padding: 1px 9px; }
     /* Laptops (≈1280-1500px): tamano intermedio para que cada dato quede en su linea */
     @media (max-width: 1500px) {
-      .sl-row .sol-k { min-width: 66px; font-size: 10.5px; }
+      .sl-row .sol-k { min-width: 60px; font-size: 10px; }
+      .sl-row .sol-lin { flex-wrap: nowrap; }
+      .sl-row .sol-lin .ch { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
       .sl-row .sol-nom { font-size: 14px; }
       .sl-row .per-lin { font-size: 12.5px; }
       .sl-row .per-k { flex-basis: 90px; }
@@ -581,8 +581,9 @@ async function api(path, opts = {}) {
   try {
     r = await fetch(API + path, { ...opts, headers });
   } catch (e) {
-    if (API === API_LOCAL && e.name === 'TypeError') { API = API_PROD; r = await fetch(API + path, { ...opts, headers }); }
-    else throw e;
+    // En local NUNCA se cae a produccion: asi las pruebas no escriben datos reales
+    if (API === API_LOCAL) throw new Error('El Worker local no responde (localhost:8787). Ábrelo con el acceso directo "Control de Usuarios (local)".');
+    throw e;
   }
   const j = await r.json().catch(() => ({}));
   if (r.status === 401 && SES) { logout(); throw new Error(j.error || 'Sesión vencida'); }
@@ -795,7 +796,13 @@ function abrirSolicitud(tipo, idUser, ctx = {}) {
   const cab = u ? `<div class="md-info"><b>${esc(u.nombres)} ${esc(u.apellidos)}</b><br>CI ${esc(u.identificacion)} · ${esc(u.username)} · ${u.roles.map(esc).join(', ') || 'sin rol en AP1 Balanceado'}<br>Cargo: ${esc(u.cargo || 'Sin cargo')}${u.departamento ? ' · ' + esc(u.departamento) : ''}</div>` : '';
   const opts = (lista, sel) => lista.map(x => `<option value="${x.id}" ${sinTildes(x.nombre).toLowerCase() === sinTildes(sel).toLowerCase() ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('');
   const campSel = `<div class="fg"><label>Campamento *</label><select id="s-camp">${camps.map(x => `<option value="${x.id}" ${x.id === sidDef ? 'selected' : ''}>${esc(x.nombre)}</option>`).join('')}</select></div>`;
-  const cargoSug = (SES.cargos || []).some(c => sinTildes(c.nombre).toLowerCase() === sinTildes(pf.cargo).toLowerCase()) ? pf.cargo : 'Trabajador Acuícola';
+  // Cargo sugerido: el equivalente en Seguridad del cargo de RRHH (lo resuelve el worker). Si el cargo de RRHH
+  // no existe en Seguridad se deja sin elegir (antes caia en "Trabajador Acuícola", que podia ser otro puesto).
+  const cargoSug = pf.cargoSeguridad
+    || ((SES.cargos || []).some(c => sinTildes(c.nombre).toLowerCase() === sinTildes(pf.cargo).toLowerCase()) ? pf.cargo : '')
+    || (ctx.prefill ? '' : 'Trabajador Acuícola');
+  const avisoCargo = pf.cargo && !cargoSug
+    ? `<div class="sub" style="color:#9a3412;margin-top:3px">El cargo de RRHH "${esc(pf.cargo)}" no existe en Seguridad: elige el más cercano.</div>` : '';
   let html = '';
   if (tipo === 'ALTA') {
     // Sugerencias: rol segun el cargo de RRHH y sucursal segun su centro de costo
@@ -813,8 +820,8 @@ function abrirSolicitud(tipo, idUser, ctx = {}) {
         <div class="fg"><label>Teléfono</label><input type="text" id="s-tel" inputmode="tel" maxlength="10" value="${esc(pf.telefono || '')}"></div>
         <div class="fg"><label>Nombres *</label><input type="text" id="s-nom" value="${esc(pf.nombres || '')}"></div>
         <div class="fg"><label>Apellidos *</label><input type="text" id="s-ape" value="${esc(pf.apellidos || '')}"></div>
-        <div class="fg"><label>Departamento</label><select id="s-dep"><option value="">— Seleccionar —</option>${opts(SES.departamentos || [], 'Producción')}</select></div>
-        <div class="fg"><label>Cargo</label><select id="s-cargo"><option value="">— Seleccionar —</option>${opts(SES.cargos || [], cargoSug)}</select></div>
+        <div class="fg"><label>Departamento</label><select id="s-dep" onchange="filtrarCargos()"><option value="">— Seleccionar —</option>${opts(SES.departamentos || [], depDeNombreCargo(cargoSug) || (cargoSug ? '' : 'Producción'))}</select></div>
+        <div class="fg"><label>Cargo</label><select id="s-cargo" onchange="depDelCargo()"><option value="">— Seleccionar —</option>${opts(SES.cargos || [], cargoSug)}</select>${avisoCargo}</div>
       </div>
       <div class="fg"><label>Correo</label><input type="text" id="s-mail" inputmode="email" value="${esc(pf.email || '')}"></div>
       <div class="fg"><label>Aplicaciones y roles * <span class="sub" style="font-weight:400">(puede tener varias aplicaciones y varios roles en cada una)</span></label>${selectorRoles(rolesSug, null, campo ? new Set([3]) : null)}</div>
@@ -830,7 +837,26 @@ function abrirSolicitud(tipo, idUser, ctx = {}) {
   document.getElementById('msol-error').textContent = '';
   document.querySelector('#modal-sol .md').classList.toggle('md-ancho', tipo === 'ALTA');
   document.getElementById('modal-sol').style.display = 'flex';
-  if (tipo === 'ALTA') marcarCasillas();
+  if (tipo === 'ALTA') { marcarCasillas(); filtrarCargos(); }
+}
+
+// En AP1 cada cargo pertenece a un solo departamento y el desplegable "Cargo" solo muestra los del
+// departamento elegido: aqui se hace igual para que lo pedido se pueda cargar tal cual en Seguridad.
+function depDeNombreCargo(nombre) {
+  const c = (SES.cargos || []).find(x => sinTildes(x.nombre).toLowerCase() === sinTildes(nombre || '').toLowerCase());
+  const d = c && c.dep ? (SES.departamentos || []).find(x => x.id === c.dep) : null;
+  return d ? d.nombre : '';
+}
+function filtrarCargos() {
+  const dep = parseInt(document.getElementById('s-dep').value, 10);
+  const sel = document.getElementById('s-cargo');
+  const actual = parseInt(sel.value, 10);
+  const lista = (SES.cargos || []).filter(c => !dep || !c.dep || c.dep === dep);
+  sel.innerHTML = '<option value="">— Seleccionar —</option>' + lista.map(c => `<option value="${c.id}" ${c.id === actual ? 'selected' : ''}>${esc(c.nombre)}</option>`).join('');
+}
+function depDelCargo() {
+  const c = (SES.cargos || []).find(x => x.id === parseInt(document.getElementById('s-cargo').value, 10));
+  if (c && c.dep) document.getElementById('s-dep').value = String(c.dep);
 }
 
 async function enviarSolicitud() {
@@ -985,7 +1011,7 @@ function renderConsulta() {
 
 function cqAlta() {
   const r = CQ.empresa.registros.find(x => x.estado === 'ACTIVO') || CQ.empresa.registros[0] || {};
-  abrirSolicitud('ALTA', null, { prefill: { cedula: CQ.cedula, nombres: r.nombres, apellidos: r.apellidos, telefono: r.telefono, email: r.email, cargo: r.cargo, centroCosto: r.centroCosto } });
+  abrirSolicitud('ALTA', null, { prefill: { cedula: CQ.cedula, nombres: r.nombres, apellidos: r.apellidos, telefono: r.telefono, email: r.email, cargo: r.cargo, cargoSeguridad: r.cargoSeguridad ? r.cargoSeguridad.nombre : '', centroCosto: r.centroCosto } });
 }
 
 function usuarioDeConsulta(i) {
@@ -1090,10 +1116,12 @@ function requiereDataMaestra(s) {
   return false;
 }
 const ICONO_CAMION = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>';
+// Aviso en la linea segun Data Maestra en vivo (en_data_maestra lo calcula el worker):
+//   false -> todavia no esta (naranja); true -> ya esta (verde); null/undefined -> no se pudo consultar
 function avisoDataMaestra(s) {
-  if (!requiereDataMaestra(s)) return '';
-  if (s.datamaestra_por) return `<div class="dm-aviso ok" title="${esc(s.correo_dm_estado || '')}">${ICONO_CAMION} Creado en Data Maestra · ${esc(nombreCorto(s.datamaestra_nombre) || s.datamaestra_por)}</div>`;
-  if (['RECHAZADA', 'ANULADA'].includes(s.estado)) return '';
+  if (!requiereDataMaestra(s) || ['RECHAZADA', 'ANULADA'].includes(s.estado)) return '';
+  if (s.en_data_maestra === true) return `<div class="dm-aviso ok" title="Ya está registrado como transportista en Data Maestra">${ICONO_CAMION} Ya está en Data Maestra</div>`;
+  if (s.en_data_maestra === false) return `<div class="dm-aviso" title="Todavía no está registrado como transportista en Data Maestra">${ICONO_CAMION} Aún no está en Data Maestra</div>`;
   return `<div class="dm-aviso">${ICONO_CAMION} Crear también en Data Maestra como transportista</div>`;
 }
 
@@ -1107,7 +1135,7 @@ function personaSol(s, d) {
   const nombre = alta ? `${d.nombres || ''} ${d.apellidos || ''}`.trim() : s.user_nombre;
   const campos = alta
     ? [['Identificación', d.identificacion], ['Nombres', d.nombres], ['Apellidos', d.apellidos], ['Teléfono', d.telefono],
-       ['Correo electrónico', d.email], ['Departamento', d.departamentoNombre], ['Cargo', d.cargoNombre]]
+       ['Correo electrónico', d.email], ['Departamento', depDeNombreCargo(d.cargoNombre) || d.departamentoNombre], ['Cargo', d.cargoNombre]]
     : [['Identificación', s.user_identificacion], ['Cargo', d.cargoActual]];
   const conValor = campos.filter(([, v]) => v);
   // Para el favorito "Pegar en AP1": roles "Aplicación · Rol" y sucursales, separados por " | " (no se muestran aqui)
@@ -1178,23 +1206,41 @@ async function pegarEnAp1() {
   await ajustarInterruptores();
 
   // 2) Desplegables PrimeReact: abrir, elegir la opcion por texto
-  const cerrarPaneles = () => { document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); document.body.click(); };
+  // Cerrar el desplegable que quedo abierto (si no, el siguiente desplegable leeria sus opciones)
+  async function cerrarPaneles(dd) {
+    for (let i = 0; i < 3 && document.querySelector('.p-dropdown-panel'); i++) {
+      const foco = document.activeElement || document.body;
+      foco.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
+      await esperar(200);
+      if (document.querySelector('.p-dropdown-panel') && dd) (dd.querySelector('.p-dropdown-trigger') || dd).click();
+      await esperar(250);
+      if (document.querySelector('.p-dropdown-panel')) { document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); document.body.click(); await esperar(250); }
+    }
+  }
   async function elegir(id, valor) {
     const dd = document.getElementById(id);
     if (!dd || !valor) return false;
+    await cerrarPaneles();
     (dd.querySelector('.p-dropdown-trigger') || dd).click();
-    const panel = await hasta(() => document.querySelector('.p-dropdown-panel'), 4000);
+    const panel = await hasta(() => [...document.querySelectorAll('.p-dropdown-panel')].pop(), 4000);
     if (!panel) return false;
     const items = await hasta(() => { const l = [...panel.querySelectorAll('.p-dropdown-item, li[role=option]')]; return l.length ? l : null; }, 4000) || [];
     const it = items.find(x => norm(x.textContent) === norm(valor)) || items.find(x => norm(x.textContent).includes(norm(valor)));
-    if (!it) { cerrarPaneles(); return false; }
+    if (!it) { await cerrarPaneles(dd); return false; }
+    it.scrollIntoView({ block: 'nearest' });
     it.click();
     await hasta(() => !document.querySelector('.p-dropdown-panel'), 2000);
     await esperar(250);
     return true;
   }
   if (d.departamento) (await elegir('departments', d.departamento) ? ok : faltan).push('departamento: ' + d.departamento);
-  if (d.cargo) (await elegir('departmentsPosition', d.cargo) ? ok : faltan).push('cargo: ' + d.cargo);
+  // AP1 carga los cargos del departamento despues de elegirlo: si no aparece, esperar y reintentar
+  if (d.cargo) {
+    let hecho = false;
+    for (let intento = 0; intento < 3 && !hecho; intento++) { await esperar(intento ? 1200 : 600); hecho = await elegir('departmentsPosition', d.cargo); }
+    if (hecho) ok.push('cargo: ' + d.cargo);
+    else faltan.push('cargo: ' + d.cargo + ' (en AP1 no aparece dentro del departamento ' + (d.departamento || 'elegido') + ')');
+  }
 
   // 3) y 4) Listas dobles (Disponibles -> Asignados)
   const listas = [...document.querySelectorAll('.p-picklist')];
@@ -1426,10 +1472,7 @@ function abrirEstado(id, estado) {
   document.getElementById('mres-sub').textContent = `${({ ALTA: 'Usuario nuevo', CAMBIO: 'Edición', BAJA: 'Baja' })[s.tipo] || s.tipo} · ${s.subsidiary_nombre} · pedida por ${s.solicitante_nombre || s.solicitante}`;
   const recordatorio = estado === 'EJECUTADA'
     ? '<div class="md-warn"><b>Confirma que ya hiciste el cambio en AP1 → Seguridad → Usuarios.</b></div>' : '';
-  resCtx.dm = estado === 'EJECUTADA' && requiereDataMaestra(s);
-  const casillaDM = resCtx.dm
-    ? `<label class="dm-check"><input type="checkbox" id="mres-dm"><span><b>Ya lo creé en Data Maestra como transportista.</b><br>Obligatorio: esta solicitud incluye el rol TRANSPORTISTA.</span></label>` : '';
-  document.getElementById('mres-info').innerHTML = `${detalleSolicitud(s)}${s.motivo ? `<div class="sol-mot">“${esc(s.motivo)}”</div>` : ''}${recordatorio}${casillaDM}`;
+  document.getElementById('mres-info').innerHTML = `${detalleSolicitud(s)}${s.motivo ? `<div class="sol-mot">“${esc(s.motivo)}”</div>` : ''}${recordatorio}`;
   document.getElementById('mres-label').textContent = estado === 'RECHAZADA' ? 'Motivo del rechazo *' : 'Comentario (opcional)';
   document.getElementById('mres-comentario').value = '';
   document.getElementById('mres-error').textContent = '';
@@ -1439,12 +1482,10 @@ function abrirEstado(id, estado) {
 
 async function confirmarEstado() {
   const btn = document.getElementById('mres-ok');
-  const dmOk = !!document.getElementById('mres-dm')?.checked;
-  if (resCtx.dm && !dmOk) { document.getElementById('mres-error').textContent = 'Marca que ya lo creaste en Data Maestra como transportista.'; return; }
   btn.disabled = true;
   try {
     const r = await api(`/d1/usuarios/solicitudes/${resCtx.id}/estado`, {
-      method: 'POST', body: JSON.stringify({ estado: resCtx.estado, comentario: document.getElementById('mres-comentario').value, datamaestraOk: dmOk })
+      method: 'POST', body: JSON.stringify({ estado: resCtx.estado, comentario: document.getElementById('mres-comentario').value })
     });
     cerrarModal('modal-res');
     toast(`Solicitud #${resCtx.id}: ${resCtx.estado}` + (r.correoDataMaestra ? ` · Aviso Data Maestra: ${r.correoDataMaestra}` : ''));
