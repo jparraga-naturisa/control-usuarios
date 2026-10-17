@@ -223,8 +223,44 @@
     .sl-tab .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, #94a3b8); }
     .sl-tab.on { background: var(--ap-navy); border-color: var(--ap-navy); color: #fff; }
     .sl-tab.on .n { background: rgba(255,255,255,.2); color: #fff; }
-    .sl-cols { display: grid; grid-template-columns: 102px 80px minmax(190px, 1.6fr) minmax(172px, 1.2fr) minmax(84px, .65fr) minmax(84px, .65fr) 94px 78px 84px 116px; gap: 0 10px; align-items: center; }
-    .sl-solic .sl-cols { grid-template-columns: 102px 80px minmax(190px, 1.6fr) minmax(172px, 1.2fr) minmax(84px, .65fr) minmax(84px, .65fr) 94px 78px 84px; }
+    .sl-cols { display: grid; grid-template-columns: 102px 86px minmax(180px, 1.5fr) minmax(90px, .7fr) minmax(120px, .9fr) 76px minmax(100px, .8fr) minmax(100px, .8fr) 104px 86px 92px 104px; gap: 0 12px; align-items: center; }
+    .sl-solic .sl-cols { grid-template-columns: 102px 86px minmax(180px, 1.5fr) minmax(90px, .7fr) minmax(120px, .9fr) 76px minmax(100px, .8fr) minmax(100px, .8fr) 104px 86px 92px; }
+    .sl-per .dm-aviso { margin-top: 4px; padding: 1px 8px; font-size: 11.5px; }
+    /* Laptops: columnas mas justas para que entre todo, incluido el boton de Acciones */
+    @media (max-width: 1500px) {
+      .sl-cols { grid-template-columns: 84px 82px minmax(160px, 1.5fr) minmax(76px, .7fr) minmax(104px, .9fr) 70px minmax(86px, .8fr) minmax(86px, .8fr) 100px 78px 86px 96px; gap: 0 8px; }
+      .sl-solic .sl-cols { grid-template-columns: 84px 74px minmax(160px, 1.5fr) minmax(76px, .7fr) minmax(104px, .9fr) 70px minmax(86px, .8fr) minmax(86px, .8fr) 96px 78px 80px; }
+      .sl-acc .rep-btn { padding-left: 8px; padding-right: 8px; }
+    }
+    /* Columnas Sucursal y Datos (iconos ver / copiar); secciones de la ventana de datos */
+    .sl-suc { font-size: 13.5px; color: #1f2f44; }
+    .mdat-sec { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin: 12px 0 6px; padding-bottom: 4px; border-bottom: 1px solid #e8ebef; }
+    .mdat-sec:first-child { margin-top: 0; }
+    /* Ventana de datos (ojo): mas grande y con letra mas legible */
+    .md.md-datos { max-width: 780px; width: 92vw; }
+    .md-datos .md-h-t { font-size: 18px; }
+    .md-datos .md-h-s { font-size: 13px; }
+    .md-datos .md-b { padding: 18px 24px 20px; }
+    .md-datos .mdat-sec { font-size: 12.5px; margin: 18px 0 10px; }
+    .md-datos .mdat-sec:first-child { margin-top: 0; }
+    .md-datos .per-lin { font-size: 15px; line-height: 1.8; }
+    .md-datos .per-k { flex-basis: 140px; }
+    .md-datos .sol-lin { margin: 6px 0; }
+    .md-datos .sol-k { font-size: 12px; min-width: 140px; }
+    .md-datos .ch { font-size: 14px; padding: 2px 10px; }
+    .md-datos .dm-aviso { font-size: 13px; }
+    .md-datos .sol-mot { font-size: 14px; }
+    .md-datos .mdat-copiar { display: inline-flex; align-items: center; gap: 6px; }
+    /* Todo el contenido de la ventana: mismo tamaño y en negrita */
+    .md-datos .md-b, .md-datos .md-b * { font-size: 15px !important; font-weight: 700 !important; letter-spacing: 0 !important; }
+    .md-datos .sol-k, .md-datos .mdat-sec { text-transform: none; }
+    .md-datos .sol-lin { margin: 8px 0; }
+    .mdat-obs { margin-top: 16px; padding: 10px 14px; border: 1px solid #d6dee8; border-left: 4px solid var(--ap-navy, #1d3f62); border-radius: 6px; background: #f8fafc; color: #1f2f44; }
+    .mdat-obs.no { border-left-color: #ef4444; background: #fef2f2; }
+    .mdat-obs-t { color: #64748b; margin-bottom: 4px; }
+    .sl-dat { display: flex; gap: 6px; align-items: center; }
+    .cp.ico-dat { width: 30px; height: 28px; border-color: #c9d6e4; color: var(--ap-navy); background: #fff; }
+    .cp.ico-dat:hover { background: #eef3f9; }
     /* Pantallas angostas: desplazar de lado en lugar de cortar columnas */
     #tbl-solicitudes { overflow-x: auto; }
     #tbl-solicitudes > .sl-cols { min-width: 1120px; }
@@ -265,6 +301,9 @@
     .sl-nota.ok { color: #166534; } .sl-nota.no { color: #991b1b; }
     .sl-acc { display: flex; flex-direction: column; gap: 6px; }
     .sl-acc .rep-btn { width: 100%; justify-content: center; height: 32px; padding: 0 8px; font-size: 12px; }
+    .sl-acc .acc-ico { display: inline-flex; align-items: center; gap: 5px; height: 30px; }
+    /* Filas de la lista: un solo tamaño de letra y en negrita (igual que la ventana de datos) */
+    .sl-row, .sl-row *:not(svg):not(path):not(circle):not(line):not(rect):not(polyline):not(polygon) { font-size: 13.5px !important; font-weight: 700 !important; }
     .sl-vacia { background: #fff; border: 1.5px dashed #cfd8e3; border-radius: 10px; padding: 40px; text-align: center; color: #8391a2; font-size: 13px; }
     @media (max-width: 1100px) {
       .sl-cols, .sl-solic .sl-cols { grid-template-columns: 1fr; gap: 8px; }
@@ -525,6 +564,20 @@
             <button class="rep-btn" onclick="cerrarModal('modal-res')">Cancelar</button>
             <button class="rep-btn rep-btn-p" id="mres-ok" onclick="confirmarEstado()">Confirmar</button>
         </div>
+    </div>
+</div>
+
+<!-- ── Datos de la persona de una solicitud (ojo de la columna Datos) ── -->
+<div class="md-bg" id="modal-datos" onclick="if(event.target===this)cerrarModal('modal-datos')">
+    <div class="md md-datos">
+        <div class="md-h">
+            <div><div class="md-h-t" id="mdat-titulo"></div><div class="md-h-s" id="mdat-sub"></div></div>
+            <div style="display:flex;gap:8px;align-items:center">
+                <button class="md-x mdat-copiar" id="mdat-copiar" onclick="copiarDatosModal(this)">Copiar para "Pegar en AP1"</button>
+                <button class="md-x" onclick="cerrarModal('modal-datos')">Cerrar</button>
+            </div>
+        </div>
+        <div class="md-b" id="mdat-body"></div>
     </div>
 </div>
 
@@ -1088,15 +1141,22 @@ function difEditar() {
 function cerrarModal(id) { document.getElementById(id).style.display = 'none'; }
 
 // ── Solicitudes ─────────────────────────────────────────
-async function cargarSolicitudes() {
+// silencioso: actualizacion automatica (no borra la lista si falla y solo redibuja si algo cambio).
+// El boton Actualizar pide la lista de Data Maestra al momento (fresco=1).
+async function cargarSolicitudes(silencioso) {
   try {
-    const j = await api('/d1/usuarios/solicitudes');
+    const j = await api('/d1/usuarios/solicitudes' + (silencioso ? '' : '?fresco=1'));
+    const nuevo = JSON.stringify(j.data);
+    if (silencioso && nuevo === JSON.stringify(SOLICITUDES)) return;
     SOLICITUDES = j.data;
     renderSolicitudes();
   } catch (e) {
-    document.getElementById('tbl-solicitudes').innerHTML = `<div class="empty">No se pudo cargar: ${esc(e.message)}</div>`;
+    if (!silencioso) document.getElementById('tbl-solicitudes').innerHTML = `<div class="empty">No se pudo cargar: ${esc(e.message)}</div>`;
   }
 }
+// Actualizacion automatica: cada minuto con la pestaña visible, y al volver a la ventana
+setInterval(() => { if (SES && document.visibilityState === 'visible') cargarSolicitudes(true); }, 60 * 1000);
+document.addEventListener('visibilitychange', () => { if (SES && document.visibilityState === 'visible') cargarSolicitudes(true); });
 
 // "Jonathan Joaquin Parraga Mendoza" -> "Jonathan Parraga" (AP1 guarda 2 nombres + 2 apellidos)
 function nombreCorto(n) {
@@ -1138,7 +1198,7 @@ function datosSol(s) { try { return JSON.parse(s.datos || '{}'); } catch { retur
 // Persona afectada: nombre y debajo un dato por linea. Un solo icono junto al nombre copia todo
 // en el formato "Etiqueta: valor" con las mismas etiquetas del formulario de AP1 → Seguridad,
 // que es lo que lee el favorito "Pegar en AP1" para llenar el formulario de una vez.
-function personaSol(s, d) {
+function datosPersona(s, d) {
   const alta = s.tipo === 'ALTA';
   const nombre = alta ? `${d.nombres || ''} ${d.apellidos || ''}`.trim() : ((s.usuario_actual && s.usuario_actual.rrhh && s.usuario_actual.rrhh.nombre) || s.user_nombre);
   const campos = alta
@@ -1164,17 +1224,66 @@ function personaSol(s, d) {
   // Edicion: tambien el teléfono (de RRHH) por si en AP1 esta vacio, que es obligatorio para actualizar
   const ua = s.usuario_actual || {};
   const telCambio = !alta ? ((ua.rrhh && ua.rrhh.telefono) || ua.telefono || '') : '';
-  const texto = [['Tipo', tipoTxt]].concat(conValor.filter(([k]) => alta || k === 'Identificación'), telCambio ? [['Teléfono', telCambio]] : [], extra.filter(([, v]) => v)).map(([k, v]) => `${k}: ${v}`).join('\n');
-  const etiqueta = k => k === 'Correo electrónico' ? 'Correo' : k;
-  return `<div class="per-top"><span class="sol-nom">${esc(nombre || '—')}</span>` +
-    `<button class="cp" title="Copiar los datos para pegarlos en AP1" data-v="${esc(texto)}" onclick="copiar(this)">${ICONO_COPIAR}</button></div>` +
-    // Nombres y apellidos no se repiten en pantalla (ya estan en el nombre de arriba); el boton si los copia por separado
-    conValor.filter(([k]) => k !== 'Nombres' && k !== 'Apellidos')
-      .map(([k, v]) => `<div class="per-lin"><span class="per-k">${etiqueta(k)}</span><span class="per-v" title="${esc(v)}">${esc(v)}</span></div>`).join('');
+  // Nombres y apellidos de RRHH (los usa Data Maestra; en Seguridad al editar solo se llenan si estan vacios)
+  const nomCambio = !alta && ua.rrhh ? [['Nombres', ua.rrhh.nombres], ['Apellidos', ua.rrhh.apellidos]].filter(([, v]) => v) : [];
+  const empleado = s.en_rrhh === true ? [['Es empleado', 'Sí']] : s.en_rrhh === false ? [['Es empleado', 'No']] : [];
+  const texto = [['Tipo', tipoTxt]].concat(conValor.filter(([k]) => alta || k === 'Identificación'), nomCambio, telCambio ? [['Teléfono', telCambio]] : [], extra.filter(([, v]) => v), empleado).map(([k, v]) => `${k}: ${v}`).join('\n');
+  // Nombres y apellidos no se repiten en pantalla (ya estan en el nombre); el texto copiado si los lleva por separado
+  return { nombre, texto, lineas: conValor.filter(([k]) => k !== 'Nombres' && k !== 'Apellidos') };
+}
+const lineasPersona = lineas => lineas.map(([k, v]) =>
+  `<div class="per-lin"><span class="per-k">${k === 'Correo electrónico' ? 'Correo' : k}</span><span class="per-v" title="${esc(v)}">${esc(v)}</span></div>`).join('');
+const botonCopiar = (texto, clase) => `<button class="cp ${clase || ''}" title="Copiar los datos para pegarlos en AP1" data-v="${esc(texto)}" onclick="copiar(this)">${ICONO_COPIAR}</button>`;
+
+// Completo (ventana de aprobar / rechazar): nombre con su icono de copiar y todos los datos
+function personaSol(s, d) {
+  const p = datosPersona(s, d);
+  return `<div class="per-top"><span class="sol-nom">${esc(p.nombre || '—')}</span>${botonCopiar(p.texto)}</div>` + lineasPersona(p.lineas);
+}
+// Lista de solicitudes: solo nombre y campamento; los datos se ven con el ojo de la columna "Datos"
+function personaCorta(s, d) {
+  const p = datosPersona(s, d);
+  // Transportista: debajo del nombre, si ya esta o no en Data Maestra
+  return `<div class="sol-nom">${esc(p.nombre || '—')}</div>${avisoDataMaestra(s)}`;
+}
+// Columna Cargo: el de la persona (RRHH); en una edicion que cambia el cargo, el nuevo
+function cargoCorto(s, d) {
+  if (s.tipo === 'CAMBIO' && d.cargoNombre) return `<span title="Cargo nuevo">${esc(d.cargoNombre)}</span>`;
+  const c = (datosPersona(s, d).lineas.find(([k]) => k === 'Cargo') || [])[1];
+  return c ? esc(c) : '<span class="sl-vacio">—</span>';
+}
+function celdaDatos(s, d) {
+  const p = datosPersona(s, d);
+  return `<button class="cp ico-dat" title="Ver los datos de la persona" onclick="verDatosSol(${s.id})">${ICONO_OJO}</button>${botonCopiar(p.texto, 'ico-dat')}`;
+}
+// Boton copiar de la barra de la ventana de datos: copia y muestra la confirmacion en el mismo boton
+async function copiarDatosModal(btn) {
+  await alPortapapeles(btn.dataset.v || '');
+  btn.innerHTML = `${ICONO_OK}<span>Copiado</span>`;
+  setTimeout(() => { btn.innerHTML = `${ICONO_COPIAR}<span>Copiar para "Pegar en AP1"</span>`; }, 1500);
+  toast(`Datos copiados. No uses ${ES_MAC ? '⌘V' : 'Ctrl+V'}: en el formulario de AP1 pulsa el favorito "Pegar en AP1".`);
+}
+function verDatosSol(id) {
+  const s = SOLICITUDES.find(x => x.id === id);
+  if (!s) return;
+  const d = datosSol(s), p = datosPersona(s, d);
+  document.getElementById('mdat-titulo').textContent = p.nombre || 'Datos de la persona';
+  document.getElementById('mdat-sub').textContent = `Solicitud #${s.id} · ${TIPO_SOL[s.tipo] || s.tipo} · ${s.subsidiary_nombre || ''}`;
+  document.getElementById('mdat-body').innerHTML =
+    `<div class="mdat-sec">Persona</div>` + lineasPersona([['Sucursal', s.subsidiary_nombre], ...p.lineas]) +
+    `<div class="mdat-sec">Qué se pide</div>` + pedidoSol(s, d, false) +
+    (s.motivo ? `<div class="mdat-obs"><div class="mdat-obs-t">Observación</div><div>${esc(s.motivo)}</div></div>` : '') +
+    (s.estado === 'RECHAZADA' && s.comentario_admin ? `<div class="mdat-obs no"><div class="mdat-obs-t">Motivo del rechazo</div><div>${esc(s.comentario_admin)}</div></div>` : '');
+  const bc = document.getElementById('mdat-copiar');
+  bc.dataset.v = p.texto;
+  bc.innerHTML = `${ICONO_COPIAR}<span>Copiar para "Pegar en AP1"</span>`;
+  document.getElementById('modal-datos').style.display = 'flex';
 }
 
 const ICONO_COPIAR = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-const ICONO_OK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="20 6 9 17 4 12"/></svg>';
+const ICONO_X = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+const ICONO_OJO ='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+const ICONO_OK ='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="20 6 9 17 4 12"/></svg>';
 
 // Favorito "Pegar en AP1": se ejecuta DENTRO de AP1 → Seguridad → Usuarios → Nuevo (React + PrimeReact),
 // por eso no usa nada de esta pantalla. Lee el portapapeles ("Etiqueta: valor" por linea) y:
@@ -1194,6 +1303,81 @@ async function pegarEnAp1() {
   const d = {};
   texto.split(/\r?\n/).forEach(l => { const i = l.indexOf(':'); if (i > 0) d[norm(l.slice(0, i))] = l.slice(i + 1).trim(); });
   const ok = [], faltan = [];
+
+  // ── Data Maestra → Nuevo Transportista: mismos datos copiados, otro formulario ──
+  const setterDM = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  const porPlaceholder = ph => [...document.querySelectorAll('input')].find(i => norm(i.placeholder).startsWith(norm(ph)));
+  if (porPlaceholder('Ingrese la identificaci') && porPlaceholder('Ingrese los apellidos')) {
+    const okDM = [], faltaDM = [];
+    const escribir = (ph, v, nombre) => {
+      if (!v) { faltaDM.push(nombre + ' (no viene en los datos copiados)'); return; }
+      const inp = porPlaceholder(ph);
+      if (!inp) { faltaDM.push(nombre); return; }
+      inp.focus(); setterDM.call(inp, v);
+      ['input', 'change', 'blur'].forEach(ev => inp.dispatchEvent(new Event(ev, { bubbles: true })));
+      okDM.push(nombre);
+    };
+    escribir('Ingrese la identificaci', d.identificacion, 'identificación');
+    escribir('Ingrese los nombres', d.nombres, 'nombres');
+    escribir('Ingrese los apellidos', d.apellidos, 'apellidos');
+    escribir('Ingrese el tel', d.telefono, 'teléfono');
+    // Desplegable / multiselección PrimeReact ubicado por su texto de "Seleccione ..."
+    const cajaPorTexto = (sel, txt) => [...document.querySelectorAll(sel)].find(x => norm(x.textContent).includes(norm(txt)));
+    const cerrar = async () => {
+      for (let i = 0; i < 3 && document.querySelector('.p-dropdown-panel, .p-multiselect-panel'); i++) {
+        (document.activeElement || document.body).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true }));
+        await esperar(250);
+        if (document.querySelector('.p-dropdown-panel, .p-multiselect-panel')) { document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); document.body.click(); await esperar(250); }
+      }
+    };
+    // Sucursales Asociadas (varias)
+    const sucsDM = (d.sucursales || d['sucursales agregar'] || '').split('|').map(x => x.trim()).filter(Boolean);
+    const ms = cajaPorTexto('.p-multiselect', 'sucursal');
+    if (sucsDM.length && ms) {
+      await cerrar();
+      (ms.querySelector('.p-multiselect-trigger') || ms).click();
+      const panel = await hasta(() => document.querySelector('.p-multiselect-panel'), 4000);
+      const items = panel ? (await hasta(() => { const l = [...panel.querySelectorAll('.p-multiselect-item, li[role=option]')]; return l.length ? l : null; }, 4000) || []) : [];
+      for (const suc of sucsDM) {
+        const it = items.find(x => norm(x.textContent) === norm(suc)) || items.find(x => norm(x.textContent).includes(norm(suc)));
+        if (!it) { faltaDM.push('sucursal: ' + suc); continue; }
+        const marcada = it.classList.contains('p-highlight') || it.getAttribute('aria-selected') === 'true';
+        if (!marcada) { it.click(); await esperar(200); }
+        okDM.push('sucursal: ' + suc);
+      }
+      await cerrar();
+    } else if (sucsDM.length) faltaDM.push('sucursales (no se encontró la lista)');
+    // Tipo de Viaje (obligatorio): solo si viene en los datos; si no, se elige a mano
+    if (d['tipo de viaje']) {
+      const dd = cajaPorTexto('.p-dropdown', 'tipo de viaje');
+      let hecho = false;
+      if (dd) {
+        await cerrar();
+        (dd.querySelector('.p-dropdown-trigger') || dd).click();
+        const panel = await hasta(() => [...document.querySelectorAll('.p-dropdown-panel')].pop(), 4000);
+        const items = panel ? (await hasta(() => { const l = [...panel.querySelectorAll('.p-dropdown-item, li[role=option]')]; return l.length ? l : null; }, 4000) || []) : [];
+        const it = items.find(x => norm(x.textContent) === norm(d['tipo de viaje'])) || items.find(x => norm(x.textContent).includes(norm(d['tipo de viaje'])));
+        if (it) { it.click(); hecho = true; await esperar(250); } else await cerrar();
+      }
+      (hecho ? okDM : faltaDM).push('tipo de viaje: ' + d['tipo de viaje']);
+    } else faltaDM.push('tipo de viaje (elígelo a mano, es obligatorio)');
+    // ¿Es empleado?
+    if (d['es empleado']) {
+      const quiere = norm(d['es empleado']).startsWith('s');
+      const et = [...document.querySelectorAll('label, span, div')].filter(x => !x.children.length && norm(x.textContent).includes('es empleado')).pop();
+      let sw = null;
+      for (let p = et; p && !sw; p = p.parentElement) sw = p.querySelector('.p-inputswitch');
+      if (!sw) faltaDM.push('¿es empleado?');
+      else {
+        const esta = () => sw.classList.contains('p-inputswitch-checked') || sw.getAttribute('aria-checked') === 'true' || !!(sw.querySelector('input') || {}).checked;
+        if (esta() !== quiere) { (sw.querySelector('.p-inputswitch-slider') || sw).click(); await esperar(300); }
+        (esta() === quiere ? okDM : faltaDM).push('¿es empleado?: ' + (quiere ? 'sí' : 'no'));
+      }
+    }
+    alert('Data Maestra · Nuevo Transportista\n\nListo: ' + okDM.length + ' datos cargados.' +
+      (faltaDM.length ? '\n\nFalta (complétalo a mano):\n- ' + faltaDM.join('\n- ') : '') + '\n\nRevisa el formulario y pulsa Guardar.');
+    return;
+  }
 
   // Pantalla: "Nuevo usuario" o la de editar (lapiz), que es el mismo formulario con "Usuario" y el boton "Actualizar"
   const editando = !!document.getElementById('username') || [...document.querySelectorAll('button')].some(b => norm(b.textContent) === 'actualizar');
@@ -1488,7 +1672,7 @@ const PESTANAS_SOL = [
   { k: 'EJECUTADA', txt: 'Ejecutadas', estados: ['EJECUTADA'], color: '#10b981' },
   { k: 'RECHAZADA', txt: 'Rechazadas', estados: ['RECHAZADA'], color: '#ef4444' }
 ];
-const TIPO_SOL = { ALTA: 'Usuario nuevo', CAMBIO: 'Edición', BAJA: 'Baja' };
+const TIPO_SOL = { ALTA: 'Nuevo', CAMBIO: 'Edición', BAJA: 'Baja' };
 let SOL_TAB = 'TODAS';
 
 function elegirTab(k) { SOL_TAB = k; renderSolicitudes(); }
@@ -1505,8 +1689,10 @@ function filaSol(s) {
   return `<div class="sl-cols sl-row" style="--c:${est.color}">
     <div><div class="sl-id">#${s.id}</div><span class="rep-st ${esc(s.tipo)}">${TIPO_SOL[s.tipo] || esc(s.tipo)}</span></div>
     <div class="sl-fecha">${esc(fechaCorta(s.creado_en))}</div>
-    <div class="sl-per"><div>${personaSol(s, d)}</div></div>
-    <div>${pedidoSol(s, d, true)}</div>
+    <div class="sl-per"><div>${personaCorta(s, d)}</div></div>
+    <div class="sl-suc" data-lbl="Sucursal">${esc(s.subsidiary_nombre || '—')}</div>
+    <div class="sl-suc" data-lbl="Cargo">${cargoCorto(s, d)}</div>
+    <div class="sl-dat" data-lbl="Datos">${celdaDatos(s, d)}</div>
     <div class="sl-quien" data-lbl="Solicitado por" title="${esc(s.solicitante_nombre || '')}">${esc(nombreCorto(s.solicitante_nombre) || s.solicitante)}</div>
     <div class="sl-quien" data-lbl="Aprobado por">${aprobo ? esc(aprobo) : '<span class="sl-vacio">—</span>'}</div>
     <div class="sl-est"><span class="sl-chip" style="--c:${est.color}">${est.txt}</span>${nota}</div>
@@ -1548,19 +1734,20 @@ function renderSolicitudes() {
   const cont = document.getElementById('tbl-solicitudes');
   cont.classList.toggle('sl-solic', !SES.isAdmin);
   if (!lista.length) { cont.innerHTML = `<div class="sl-vacia">No hay solicitudes ${tab.k === 'TODAS' ? '' : tab.txt.toLowerCase()} con esos filtros.</div>`; return; }
-  cont.innerHTML = `<div class="sl-cols sl-head"><span>Solicitud</span><span>Fecha</span><span>Persona</span><span>Qué se pide</span><span>Solicitado por</span><span>Aprobado por</span><span>Estado</span><span>Usuario creado</span><span>Fecha de creación</span>${SES.isAdmin ? '<span>Acciones</span>' : ''}</div>` +
+  cont.innerHTML = `<div class="sl-cols sl-head"><span>Solicitud</span><span>Fecha</span><span>Persona</span><span>Sucursal</span><span>Cargo</span><span>Datos</span><span>Solicitado por</span><span>Aprobado por</span><span>Estado</span><span>Usuario creado</span><span>Fecha de creación</span>${SES.isAdmin ? '<span>Acciones</span>' : ''}</div>` +
     lista.map(filaSol).join('');
 }
 
 // Solo administradores: aprobar / rechazar / marcar ejecutada
 function accionesSolicitud(s) {
   if (SES.isAdmin) {
+    // Botones cortos con icono (el titulo explica la accion completa)
     if (s.estado === 'PENDIENTE') return `
-      <button class="rep-btn rep-btn-ok" onclick="abrirEstado(${s.id},'APROBADA')">Aprobar</button>
-      <button class="rep-btn rep-btn-x" onclick="abrirEstado(${s.id},'RECHAZADA')">Rechazar</button>`;
+      <button class="rep-btn rep-btn-ok acc-ico" title="Aprobar la solicitud" onclick="abrirEstado(${s.id},'APROBADA')">${ICONO_OK}Aprobar</button>
+      <button class="rep-btn rep-btn-x acc-ico" title="Rechazar la solicitud" onclick="abrirEstado(${s.id},'RECHAZADA')">${ICONO_X}Rechazar</button>`;
     // Una vez aprobada ya no se puede rechazar: solo queda ejecutarla
     if (s.estado === 'APROBADA') return `
-      <button class="rep-btn rep-btn-p" onclick="abrirEstado(${s.id},'EJECUTADA')">Marcar ejecutada</button>`;
+      <button class="rep-btn rep-btn-p acc-ico" title="Marcar como ejecutada (ya se hizo en AP1)" onclick="abrirEstado(${s.id},'EJECUTADA')">${ICONO_OK}Ejecutar</button>`;
     return '';
   }
   return '';
