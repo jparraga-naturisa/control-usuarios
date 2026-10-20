@@ -234,6 +234,9 @@
     }
     /* Columnas Sucursal y Datos (iconos ver / copiar); secciones de la ventana de datos */
     .sl-suc { font-size: 13.5px; color: #1f2f44; }
+    .suc-quita { color: #94a3b8; text-decoration: line-through; }
+    .suc-quita-s { color: #991b1b; }
+    .suc-pone { color: #166534; }
     .mdat-sec { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin: 12px 0 6px; padding-bottom: 4px; border-bottom: 1px solid #e8ebef; }
     .mdat-sec:first-child { margin-top: 0; }
     /* Ventana de datos (ojo): mas grande y con letra mas legible */
@@ -526,6 +529,36 @@
                     </div>
                     <div id="dm-lista" style="margin-top:10px"></div>
                     <div id="dm-canal" class="sub" style="margin-top:8px"></div>
+                </div>
+            </div>
+            <div class="ap-panel" style="flex:0 1 auto;max-width:760px;margin-top:12px">
+                <div class="ap-ph">
+                    <span class="ap-ph-t">Avisos por Teams</span>
+                    <span class="ap-ph-sub">Publica una tarjeta en un canal o chat de Teams cuando pasa algo con una solicitud.</span>
+                </div>
+                <div class="ap-body" style="padding:12px 14px">
+                    <div id="tm-estado" class="sub" style="margin-bottom:8px"></div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+                        <div class="fg" style="flex:1;min-width:260px"><label>Dirección del webhook de Teams</label><input type="password" id="tm-url" autocomplete="off" placeholder="https://… (pégala aquí)" style="width:100%;height:30px;padding:0 10px;border:1px solid #b9c3cd;border-radius:4px"></div>
+                        <button class="rep-btn rep-btn-p" onclick="guardarTeams()">Guardar</button>
+                        <button class="rep-btn" id="tm-prueba" onclick="probarTeams()">Enviar prueba</button>
+                        <button class="rep-btn" id="tm-quitar" onclick="quitarTeams()">Quitar</button>
+                    </div>
+                    <div style="margin-top:10px;display:flex;gap:16px;flex-wrap:wrap" id="tm-eventos">
+                        <label class="chk-it"><input type="checkbox" value="NUEVA" onchange="guardarEventosTeams()"> Nueva solicitud</label>
+                        <label class="chk-it"><input type="checkbox" value="APROBADA" onchange="guardarEventosTeams()"> Aprobada</label>
+                        <label class="chk-it"><input type="checkbox" value="RECHAZADA" onchange="guardarEventosTeams()"> Rechazada</label>
+                        <label class="chk-it"><input type="checkbox" value="EJECUTADA" onchange="guardarEventosTeams()"> Ejecutada</label>
+                    </div>
+                    <details style="margin-top:10px" class="sub">
+                        <summary style="cursor:pointer">Cómo obtener la dirección en Teams</summary>
+                        <ol style="margin:6px 0 0 18px;padding:0;line-height:1.6">
+                            <li>En Teams, en el canal o chat donde quieres los avisos: <b>…</b> (más opciones) → <b>Flujos de trabajo</b> (Workflows).</li>
+                            <li>Elige la plantilla <b>"Publicar en un canal cuando se reciba una solicitud de webhook"</b> (o "en un chat").</li>
+                            <li>Ponle un nombre (ej. <i>Control de Usuarios</i>), confirma el equipo y canal, y pulsa <b>Agregar flujo de trabajo</b>.</li>
+                            <li>Copia la dirección que te muestra, pégala arriba, <b>Guardar</b> y luego <b>Enviar prueba</b>.</li>
+                        </ol>
+                    </details>
                 </div>
             </div>
         </div>
@@ -1246,6 +1279,19 @@ function personaCorta(s, d) {
   // Transportista: debajo del nombre, si ya esta o no en Data Maestra
   return `<div class="sol-nom">${esc(p.nombre || '—')}</div>${avisoDataMaestra(s)}`;
 }
+// Columna Sucursal: el campamento de la solicitud; en una edicion que cambia sucursales, el cambio
+// (las que se quitan tachadas → las que se agregan en verde)
+function sucursalCorta(s, d) {
+  const add = [...(d.sucursalesAgregarNombres || []), ...(d.subsidiaryDestinoId ? [d.subsidiaryDestinoNombre || ''] : [])].filter(Boolean);
+  const del = d.sucursalesQuitarNombres || [];
+  if (s.tipo !== 'CAMBIO' || (!add.length && !del.length)) return esc(s.subsidiary_nombre || '—');
+  // Ya ejecutada y movida de campamento: queda la sucursal nueva (la anterior en el titulo)
+  if (s.estado === 'EJECUTADA' && add.length) return `<span title="${del.length ? 'Antes: ' + esc(del.join(', ')) : 'Se agregó'}">${esc(add.join(', '))}</span>`;
+  const q = del.map(n => `<span class="suc-quita">${esc(n)}</span>`).join(', ');
+  const a = add.map(n => `<span class="suc-pone">${esc(n)}</span>`).join(', ');
+  if (q && a) return `${q} <span class="flecha">→</span> ${a}`;
+  return a ? `<span class="suc-pone">+</span> ${a}` : `<span class="suc-quita-s">−</span> ${q}`;
+}
 // Columna Cargo: el de la persona (RRHH); en una edicion que cambia el cargo, el nuevo
 function cargoCorto(s, d) {
   if (s.tipo === 'CAMBIO' && d.cargoNombre) return `<span title="Cargo nuevo">${esc(d.cargoNombre)}</span>`;
@@ -1270,7 +1316,8 @@ function verDatosSol(id) {
   document.getElementById('mdat-titulo').textContent = p.nombre || 'Datos de la persona';
   document.getElementById('mdat-sub').textContent = `Solicitud #${s.id} · ${TIPO_SOL[s.tipo] || s.tipo} · ${s.subsidiary_nombre || ''}`;
   document.getElementById('mdat-body').innerHTML =
-    `<div class="mdat-sec">Persona</div>` + lineasPersona([['Sucursal', s.subsidiary_nombre], ...p.lineas]) +
+    `<div class="mdat-sec">Persona</div>` +
+    `<div class="per-lin"><span class="per-k">Sucursal</span><span class="per-v">${sucursalCorta(s, d)}</span></div>` + lineasPersona(p.lineas) +
     `<div class="mdat-sec">Qué se pide</div>` + pedidoSol(s, d, false) +
     (s.motivo ? `<div class="mdat-obs"><div class="mdat-obs-t">Observación</div><div>${esc(s.motivo)}</div></div>` : '') +
     (s.estado === 'RECHAZADA' && s.comentario_admin ? `<div class="mdat-obs no"><div class="mdat-obs-t">Motivo del rechazo</div><div>${esc(s.comentario_admin)}</div></div>` : '');
@@ -1690,7 +1737,7 @@ function filaSol(s) {
     <div><div class="sl-id">#${s.id}</div><span class="rep-st ${esc(s.tipo)}">${TIPO_SOL[s.tipo] || esc(s.tipo)}</span></div>
     <div class="sl-fecha">${esc(fechaCorta(s.creado_en))}</div>
     <div class="sl-per"><div>${personaCorta(s, d)}</div></div>
-    <div class="sl-suc" data-lbl="Sucursal">${esc(s.subsidiary_nombre || '—')}</div>
+    <div class="sl-suc" data-lbl="Sucursal">${sucursalCorta(s, d)}</div>
     <div class="sl-suc" data-lbl="Cargo">${cargoCorto(s, d)}</div>
     <div class="sl-dat" data-lbl="Datos">${celdaDatos(s, d)}</div>
     <div class="sl-quien" data-lbl="Solicitado por" title="${esc(s.solicitante_nombre || '')}">${esc(nombreCorto(s.solicitante_nombre) || s.solicitante)}</div>
@@ -1711,7 +1758,8 @@ function renderSolicitudes() {
   const camp = parseInt(document.getElementById('f-sol-camp').value, 10) || null;
   const q = sinTildes(document.getElementById('f-sol-buscar').value).toLowerCase().trim();
   const base = SOLICITUDES.filter(s => {
-    if (camp && s.subsidiary_id !== camp) return false;
+    // Campamento: el de la solicitud o una sucursal que la edicion le agrega (ej. traslado Inducam → Golfomar)
+    if (camp && s.subsidiary_id !== camp && !(datosSol(s).sucursalesAgregar || []).map(Number).includes(camp)) return false;
     if (tipo && s.tipo !== tipo) return false;
     if (!q) return true;
     const d = datosSol(s);
@@ -1794,7 +1842,46 @@ async function cargarConfigDM() {
       ? 'Envío de correo activo.'
       : '<b style="color:#9a3412">Envío de correo aún no configurado</b> (falta el buzón de Office 365). Mientras tanto el aviso queda en la app y la solicitud registra "correo pendiente".';
     pintarCorreosDM();
+    pintarTeams(j.teams || {});
   } catch (e) { document.getElementById('dm-lista').innerHTML = `<span class="sub">${esc(e.message)}</span>`; }
+}
+
+// ── Avisos por Teams ────────────────────────────────────
+function pintarTeams(t) {
+  document.getElementById('tm-estado').innerHTML = t.configurado
+    ? `<b style="color:#166534">Activo</b> · webhook guardado (termina en …${esc(t.fin)}). Para cambiarlo pega otra dirección y guarda.`
+    : '<b style="color:#9a3412">Sin configurar</b>: pega la dirección del webhook de Teams y guarda.';
+  document.getElementById('tm-prueba').disabled = !t.configurado;
+  document.getElementById('tm-quitar').disabled = !t.configurado;
+  const ev = t.eventos || [];
+  document.querySelectorAll('#tm-eventos input').forEach(c => { c.checked = ev.includes(c.value); });
+}
+async function enviarTeams(cuerpo, msg) {
+  try {
+    const j = await api('/d1/usuarios/config', { method: 'POST', body: JSON.stringify({ teams: cuerpo }) });
+    pintarTeams(j.teams); if (msg) toast(msg);
+  } catch (e) { toast(e.message, true); }
+}
+function guardarTeams() {
+  const inp = document.getElementById('tm-url');
+  const url = inp.value.trim();
+  if (!url) return toast('Pega la dirección del webhook de Teams', true);
+  inp.value = '';
+  enviarTeams({ webhook: url }, 'Webhook de Teams guardado. Pulsa "Enviar prueba" para verificarlo.');
+}
+function quitarTeams() {
+  if (!confirm('¿Quitar el webhook de Teams? Se dejarán de enviar los avisos.')) return;
+  enviarTeams({ webhook: '' }, 'Avisos por Teams desactivados');
+}
+function guardarEventosTeams() {
+  enviarTeams({ eventos: [...document.querySelectorAll('#tm-eventos input:checked')].map(c => c.value) }, 'Eventos de Teams guardados');
+}
+async function probarTeams() {
+  const b = document.getElementById('tm-prueba');
+  b.disabled = true;
+  try { await api('/d1/usuarios/teams/prueba', { method: 'POST' }); toast('Mensaje de prueba enviado: revisa el canal de Teams'); }
+  catch (e) { toast(e.message, true); }
+  b.disabled = false;
 }
 function pintarCorreosDM() {
   document.getElementById('dm-lista').innerHTML = CORREOS_DM.length
