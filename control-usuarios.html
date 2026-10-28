@@ -563,9 +563,9 @@
                         <button class="rep-btn rep-btn-p" style="margin-top:6px" onclick="guardarMencionesTeams()">Guardar personas</button>
                     </div>
                     <div style="margin-top:12px;border-top:1px solid #e8ebef;padding-top:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-                        <label class="chk-it" style="font-weight:600"><input type="checkbox" id="tm-recordatorio" onchange="guardarRecordatorioTeams()"> Recordatorio diario de pendientes (16:00)</label>
+                        <label class="chk-it" style="font-weight:600"><input type="checkbox" id="tm-recordatorio" onchange="guardarRecordatorioTeams()"> Recordatorio de pendientes (12:00 y 16:00)</label>
                         <button class="rep-btn" id="tm-rec-ahora" onclick="recordatorioTeamsAhora()">Enviar recordatorio ahora</button>
-                        <span class="sub" style="flex-basis:100%">Cada día a las 16:00: pendientes de aprobar y aprobadas sin ejecutar, arrobando a quien le toca. Si no hay pendientes, ese día no se envía.</span>
+                        <span class="sub" style="flex-basis:100%">A las 12:00 y a las 16:00: pendientes de aprobar y aprobadas sin ejecutar, arrobando a quien le toca. Si no hay pendientes, ese día no se envía.</span>
                     </div>
                     <details style="margin-top:10px" class="sub">
                         <summary style="cursor:pointer">Cómo obtener la dirección en Teams</summary>
@@ -1879,7 +1879,7 @@ function pintarTeams(t) {
 }
 function guardarRecordatorioTeams() {
   const on = document.getElementById('tm-recordatorio').checked;
-  enviarTeams({ recordatorio: on }, on ? 'Recordatorio diario activado (16:00)' : 'Recordatorio diario desactivado');
+  enviarTeams({ recordatorio: on }, on ? 'Recordatorio de pendientes activado (12:00 y 16:00)' : 'Recordatorio de pendientes desactivado');
 }
 async function recordatorioTeamsAhora() {
   const b = document.getElementById('tm-rec-ahora');
