@@ -261,6 +261,10 @@
     .mdat-obs { margin-top: 16px; padding: 10px 14px; border: 1px solid #d6dee8; border-left: 4px solid var(--ap-navy, #1d3f62); border-radius: 6px; background: #f8fafc; color: #1f2f44; }
     .mdat-obs.no { border-left-color: #ef4444; background: #fef2f2; }
     .mdat-obs-t { color: #64748b; margin-bottom: 4px; }
+    /* Panel Teams: personas a arrobar por paso */
+    .tm-men { display: flex; align-items: center; gap: 10px; margin: 5px 0; flex-wrap: wrap; }
+    .tm-men label { flex: 0 0 300px; font-size: 13px; }
+    .tm-men input { flex: 1; min-width: 220px; height: 30px; padding: 0 10px; border: 1px solid #b9c3cd; border-radius: 4px; }
     .sl-dat { display: flex; gap: 6px; align-items: center; }
     .cp.ico-dat { width: 30px; height: 28px; border-color: #c9d6e4; color: var(--ap-navy); background: #fff; }
     .cp.ico-dat:hover { background: #eef3f9; }
@@ -549,6 +553,14 @@
                         <label class="chk-it"><input type="checkbox" value="APROBADA" onchange="guardarEventosTeams()"> Aprobada</label>
                         <label class="chk-it"><input type="checkbox" value="RECHAZADA" onchange="guardarEventosTeams()"> Rechazada</label>
                         <label class="chk-it"><input type="checkbox" value="EJECUTADA" onchange="guardarEventosTeams()"> Ejecutada</label>
+                    </div>
+                    <div style="margin-top:12px;border-top:1px solid #e8ebef;padding-top:10px">
+                        <div style="font-weight:600;margin-bottom:2px">Arrobar en Teams a quien le toca</div>
+                        <div class="sub" style="margin-bottom:8px">Correos de Naturisa separados por coma. La persona recibe la notificación de mención (debe estar en el chat o canal).</div>
+                        <div class="tm-men"><label>Aprueba <span class="sub">(nueva solicitud)</span></label><input type="text" id="tm-m-aprobar" placeholder="ej. ralvarez@naturisa.com.ec"></div>
+                        <div class="tm-men"><label>Ejecuta en AP1 <span class="sub">(aprobada)</span></label><input type="text" id="tm-m-ejecutar" placeholder="ej. jparraga@naturisa.com.ec"></div>
+                        <div class="tm-men"><label>Registra en Data Maestra <span class="sub">(transportista ejecutado que aún no está)</span></label><input type="text" id="tm-m-datamaestra" placeholder="correos de Data Maestra"></div>
+                        <button class="rep-btn rep-btn-p" style="margin-top:6px" onclick="guardarMencionesTeams()">Guardar personas</button>
                     </div>
                     <details style="margin-top:10px" class="sub">
                         <summary style="cursor:pointer">Cómo obtener la dirección en Teams</summary>
@@ -1855,6 +1867,12 @@ function pintarTeams(t) {
   document.getElementById('tm-quitar').disabled = !t.configurado;
   const ev = t.eventos || [];
   document.querySelectorAll('#tm-eventos input').forEach(c => { c.checked = ev.includes(c.value); });
+  const m = t.menciones || {};
+  ['aprobar', 'ejecutar', 'datamaestra'].forEach(k => { document.getElementById('tm-m-' + k).value = (m[k] || []).join(', '); });
+}
+function guardarMencionesTeams() {
+  const lista = k => document.getElementById('tm-m-' + k).value.split(/[,;\s]+/).map(x => x.trim()).filter(Boolean);
+  enviarTeams({ menciones: { aprobar: lista('aprobar'), ejecutar: lista('ejecutar'), datamaestra: lista('datamaestra') } }, 'Personas a arrobar guardadas');
 }
 async function enviarTeams(cuerpo, msg) {
   try {
