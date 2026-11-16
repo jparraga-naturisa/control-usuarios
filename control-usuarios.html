@@ -1155,7 +1155,7 @@ function abrirEditar(i, origen) {
   document.getElementById('msol-titulo').textContent = 'Editar usuario ' + cu.username;
   document.getElementById('msol-sub').textContent = `${u.nombres} ${u.apellidos} · CI ${CQ.cedula}`;
   document.getElementById('msol-body').innerHTML = `
-    <div class="fg"><label>Aplicaciones y roles</label>${selectorRoles(actualesRol, actualesRol, new Set([3, ...cu.aplicaciones.map(a => a.id)]))}
+    <div class="fg"><label>Aplicaciones y roles <span class="sub" style="font-weight:400">(todas las de Seguridad; las que no tiene salen cerradas)</span></label>${selectorRoles(actualesRol, actualesRol)}
       ${huerfanos.length ? `<div class="chk-grid roles" style="margin-top:4px">${huerfanos.map(x => `<label class="chk-it"><input type="checkbox" data-t="rid" value="${x.id}" checked onchange="marcarCasillas()">${esc(x.txt)} (inactivo)</label>`).join('')}</div>` : ''}
     </div>
     <div class="fg"><label>Sucursales asignadas</label>
