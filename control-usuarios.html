@@ -1064,11 +1064,14 @@ function renderConsulta() {
   } else {
     acciones = j.usuarios.map((u, i) => {
       if (u.solicitudAbierta) return `<span class="rep-st ${esc(u.solicitudAbierta.tipo)}">Solicitud abierta #${u.solicitudAbierta.id} ${esc(u.solicitudAbierta.tipo)} · ${esc(u.solicitudAbierta.estado)}</span>`;
-      if (!u.sucursalesGestionables.length && !SES.isAdmin) return `<span class="sub">${esc(u.username)}: no está en ninguno de tus campamentos</span>`;
+      // Alguien de otro campamento tambien se puede editar: sirve para pedir que lo traigan al tuyo
+      // (el cambio tiene que agregar una de tus sucursales). La baja si exige que ya sea de los tuyos.
+      const ajeno = !u.sucursalesGestionables.length && !SES.isAdmin;
       return `<button class="rep-btn rep-btn-p" onclick="abrirEditar(${i})">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
           Editar${j.usuarios.length > 1 ? ' ' + esc(u.username) : ''}</button>` +
-        (u.estado === 'ACTIVO' ? `<button class="rep-btn rep-btn-x" onclick="cqSolicitud('BAJA', ${i})">Dar de baja</button>` : '');
+        (u.estado === 'ACTIVO' && !ajeno ? `<button class="rep-btn rep-btn-x" onclick="cqSolicitud('BAJA', ${i})">Dar de baja</button>` : '') +
+        (ajeno ? `<span class="sub">${esc(u.username)} no está en tus campamentos: para pedir un cambio agrégale una de tus sucursales.</span>` : '');
     }).join('');
   }
   const aviso = j.rrhhDisponible && !j.empresa.activo && j.usuarios.some(u => u.estado === 'ACTIVO')
@@ -1151,15 +1154,21 @@ function abrirEditar(i, origen) {
   const enCatalogo = new Set((SES.rolesPorApp || []).flatMap(a => a.roles.map(r => r.id)));
   const huerfanos = cu.aplicaciones.flatMap(a => (a.roleIds || []).map((id, k) => ({ id, txt: `${a.nombre} · ${a.roles[k]}` }))).filter(x => !enCatalogo.has(x.id));
   const opts = (lista) => lista.map(x => `<option value="${x.id}">${esc(x.nombre)}</option>`).join('');
+  // De las sucursales que ya tiene solo se muestran marcadas las que tu manejas; el resto de las tuyas
+  // quedan en "+ Agregar otra sucursal". Si no comparten ninguna, la cuadricula sale vacia con su aviso.
+  const visiblesSuc = new Set(propias.filter(p => actualesSuc.has(p.id)).map(p => p.id));
+  const avisoAjeno = solCtx.sinCampamento && !SES.isAdmin
+    ? `<div class="md-warn">No está en ninguno de tus campamentos. Puedes pedir que lo traigan al tuyo: marca una de tus sucursales abajo. Quitarle las de otros campamentos lo hace un administrador.</div>` : '';
 
   document.getElementById('msol-titulo').textContent = 'Editar usuario ' + cu.username;
   document.getElementById('msol-sub').textContent = `${u.nombres} ${u.apellidos} · CI ${CQ.cedula}`;
   document.getElementById('msol-body').innerHTML = `
+    ${avisoAjeno}
     <div class="fg"><label>Aplicaciones y roles <span class="sub" style="font-weight:400">(todas las de Seguridad; las que no tiene salen cerradas)</span></label>${selectorRoles(actualesRol, actualesRol)}
       ${huerfanos.length ? `<div class="chk-grid roles" style="margin-top:4px">${huerfanos.map(x => `<label class="chk-it"><input type="checkbox" data-t="rid" value="${x.id}" checked onchange="marcarCasillas()">${esc(x.txt)} (inactivo)</label>`).join('')}</div>` : ''}
     </div>
     <div class="fg"><label>Sucursales asignadas</label>
-      ${selectorSucursales(propias, actualesSuc, actualesSuc)}
+      ${selectorSucursales(propias, actualesSuc, visiblesSuc)}
       <div class="chk-ley">Verde = se agrega · Rojo = se quita.${fuera.length ? ` También está en: ${fuera.map(x => esc(x.nombre)).join(', ')} (no las manejas).` : ''}</div>
     </div>
     <div class="md-grid">
